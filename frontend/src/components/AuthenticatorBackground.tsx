@@ -1,10 +1,16 @@
 // src/components/AuthenticatorBackground.tsx
-export default function AuthenticatorBackground({ children }) {
+import type { ReactNode } from "react";
+
+type Props = {
+  children: ReactNode;
+};
+
+export default function AuthenticatorBackground({ children }: Props) {
   return (
     <div
       style={{
         minHeight: "100vh",
-        backgroundImage: "url('/bg.avif')", // ← 好きな背景画像に変更
+        backgroundImage: "url('/bg.avif')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         display: "flex",
@@ -13,7 +19,6 @@ export default function AuthenticatorBackground({ children }) {
         padding: "40px",
       }}
     >
-      {/* ガラスモーフィズムのカード */}
       <div
         style={{
           background: "rgba(255, 255, 255, 0.25)",
