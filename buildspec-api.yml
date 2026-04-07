@@ -1,0 +1,35 @@
+# buildspec-api.yml
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: ap-northeast-1
+    ECR_REPOSITORY: user-management-api
+    ECS_CLUSTER: user-management-cluster
+    ECS_SERVICE: user-management-api-service
+    CONTAINER_NAME: user-management-api
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+
+  build:
+    commands:
+      - echo Building Docker image...
+      - cd containers/api
+      - docker build -t $IMAGE_URI .
+
+  post_build:
+    commands:
+      - echo Pushing Docker image...
+      - docker push $IMAGE_URI
+      - echo Updating ECS service...
+      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $IMAGE_URI > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
