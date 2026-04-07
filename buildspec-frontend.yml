@@ -1,0 +1,26 @@
+# buildspec-frontend.yml
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - cd frontend
+      - npm ci
+
+  build:
+    commands:
+      - npm run build
+
+  post_build:
+    commands:
+      # S3へデプロイ
+      - aws s3 sync dist/ s3://user-management-frontend --delete
+      # CloudFrontのキャッシュ無効化
+      - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: frontend/dist
