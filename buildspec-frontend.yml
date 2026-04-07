@@ -16,7 +16,7 @@ phases:
   post_build:
     commands:
       # S3へデプロイ
-      - aws s3 sync dist/ s3://user-management-frontend --delete
+      - aws s3 sync dist/ s3://disp-unit-dev-frontend --delete
       # CloudFrontのキャッシュ無効化
       - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
 
