@@ -17,7 +17,7 @@ export const getUsers = async (req: Request, res: Response) => {
 // ユーザー詳細取得
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+   const { id } = req.params as { id: string };
     const user = await getUserById(id);
 
     if (!user) {
@@ -65,7 +65,7 @@ export const createUserHandler = async (req: Request, res: Response) => {
 // ユーザー削除
 export const deleteUserHandler = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+   const { id } = req.params as { id: string };
     await deleteUser(id);
     res.status(200).json({ message: "削除しました" });
   } catch (err) {
