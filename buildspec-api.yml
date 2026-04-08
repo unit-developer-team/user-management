@@ -6,7 +6,7 @@ env:
     AWS_REGION: ap-northeast-1
     ECR_REPOSITORY: user-management-api
     ECS_CLUSTER: user-management-cluster
-    ECS_SERVICE: user-management-api-service
+    ECS_SERVICE: user-management-api-task-service-jxrfctt2
     CONTAINER_NAME: user-management-api
 
 phases:
