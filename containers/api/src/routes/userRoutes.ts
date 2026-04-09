@@ -1,6 +1,6 @@
 // routes/userRoutes.ts
 import { Router } from "express";
-import { getUsers, getUser } from "../controllers/userController";
+import { getUsers, getUser, createUserHandler, deleteUserHandler } from "../controllers/userController";
 
 const router = Router();
 
@@ -16,5 +16,7 @@ const verifyInternalToken = (req: any, res: any, next: any) => {
 
 router.get("/users", verifyInternalToken, getUsers);
 router.get("/users/:id", verifyInternalToken, getUser);
+router.post("/users", verifyInternalToken, createUserHandler);
+router.delete("/users/:id", verifyInternalToken, deleteUserHandler);
 
 export default router;

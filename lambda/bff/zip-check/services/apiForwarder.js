@@ -9,10 +9,6 @@ const forwardToApi = async (event) => {
         throw new Error("環境変数が設定されていません");
     const path = event.path ?? "/users";
     const url = `${albUrl}${path}`;
-   console.log("event.path:", event.path);
-   console.log("event.httpMethod:", event.httpMethod);
-   console.log("転送先URL:", url);
-   console.log("INTERNAL_TOKEN:", internalToken);
     try {
         const res = await fetch(url, {
             method: event.httpMethod,
@@ -24,7 +20,7 @@ const forwardToApi = async (event) => {
             body: event.body ? event.body : undefined,
         });
         if (!res.ok) {
-          console.error("APIコンテナへの転送失敗", res.status, await res.text());
+            console.error("APIコンテナへの転送失敗", res.status);
             return {
                 statusCode: res.status,
                 body: JSON.stringify({ message: "Bad Gateway" }),
