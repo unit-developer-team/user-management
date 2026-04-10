@@ -28,9 +28,14 @@ const forwardToApi = async (event) => {
         }
         const data = await res.json();
         return {
-            statusCode: res.status,
-            body: JSON.stringify(shape(data)),
-        };
+          statusCode: res.status,
+          headers: {
+                  "Access-Control-Allow-Origin": "*",
+                  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+                  "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+                   },
+                   body: JSON.stringify(shape(data)),
+                };
     }
     catch (err) {
         console.error("APIコンテナへの接続エラー", err);
