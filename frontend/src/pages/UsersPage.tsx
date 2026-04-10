@@ -1,7 +1,5 @@
-// src/pages/UsersPage.tsx
 import { useEffect, useState } from "react";
 import { getUsers, createUser, deleteUser } from "../api/userApi";
-import "../index.css";
 
 type User = {
   id: string;
@@ -10,147 +8,14 @@ type User = {
   createdAt: string;
 };
 
-const s = {
-  page: {
-    maxWidth: 780,
-    margin: "0 auto",
-    padding: "52px 24px",
-    textAlign: "left" as const,
-  },
-  headingWrap: { marginBottom: 36 },
-  heading: {
-    fontSize: 34,
-    fontWeight: 700,
-    letterSpacing: "-0.8px",
-    margin: 0,
-    color: "var(--text-h)",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  headingSub: {
-    fontSize: 13,
-    color: "var(--text)",
-    marginTop: 6,
-    letterSpacing: 0,
-  },
-  card: {
-    background: "rgba(255,255,255,0.75)",
-    backdropFilter: "blur(16px)",
-    WebkitBackdropFilter: "blur(16px)",
-    border: "1px solid rgba(255,255,255,0.5)",
-    borderRadius: 14,
-    padding: "28px 32px",
-    marginBottom: 24,
-    boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
-  },
-  cardTitle: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: "var(--text)",
-    marginBottom: 18,
-    textTransform: "uppercase" as const,
-    letterSpacing: "1px",
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  row: { display: "flex", gap: 10, flexWrap: "wrap" as const },
-  input: {
-    flex: 1,
-    minWidth: 160,
-    padding: "11px 14px",
-    fontSize: 15,
-    border: "1.5px solid var(--border)",
-    borderRadius: 10,
-    background: "var(--bg)",
-    color: "var(--text-h)",
-    outline: "none",
-  },
-  btnPrimary: {
-    padding: "11px 24px",
-    fontSize: 15,
-    fontWeight: 700,
-    background: "var(--accent)",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    cursor: "pointer",
-    whiteSpace: "nowrap" as const,
-  },
-  btnDanger: {
-    padding: "5px 12px",
-    fontSize: 13,
-    fontWeight: 500,
-    background: "transparent",
-    color: "#ef4444",
-    border: "1px solid #ef4444",
-    borderRadius: 8,
-    cursor: "pointer",
-  },
-  table: { width: "100%", borderCollapse: "collapse" as const, fontSize: 15 },
-  th: {
-    textAlign: "left" as const,
-    padding: "10px 14px",
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.8px",
-    textTransform: "uppercase" as const,
-    color: "var(--text)",
-    borderBottom: "1px solid var(--border)",
-  },
-  td: {
-    padding: "14px",
-    borderBottom: "1px solid var(--border)",
-    color: "var(--text-h)",
-    verticalAlign: "middle" as const,
-  },
-  tdMuted: {
-    padding: "14px",
-    borderBottom: "1px solid var(--border)",
-    color: "var(--text)",
-    fontSize: 12,
-    fontFamily: "var(--mono)",
-    verticalAlign: "middle" as const,
-  },
-  badge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 5,
-    padding: "3px 10px",
-    borderRadius: 99,
-    background: "var(--accent-bg)",
-    color: "var(--accent)",
-    fontSize: 12,
-    fontWeight: 600,
-  },
-  error: {
-    padding: "12px 16px",
-    borderRadius: 10,
-    background: "rgba(239,68,68,0.08)",
-    color: "#ef4444",
-    fontSize: 14,
-    marginBottom: 20,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  spinner: {
-    width: 14,
-    height: 14,
-    border: "2px solid var(--border)",
-    borderTop: "2px solid var(--accent)",
-    borderRadius: "50%",
-    display: "inline-block",
-    animation: "spin 0.7s linear infinite",
-  },
-  empty: {
-    color: "var(--text)",
-    fontSize: 15,
-    padding: "24px 0",
-    textAlign: "center" as const,
-  },
-};
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -174,6 +39,7 @@ function UsersPage() {
 
   const handleCreate = async () => {
     if (!name || !email) { setError("名前とメールアドレスを入力してください"); return; }
+    setError(null);
     try {
       setLoading(true);
       await createUser(name, email);
@@ -199,64 +65,216 @@ function UsersPage() {
   };
 
   return (
-    <div style={s.page}>
-      <h1 style={s.heading}>ユーザー管理</h1>
+    <div style={{ position: "relative", minHeight: "calc(100vh - 84px)", overflow: "hidden" }}>
 
-      {error && <div style={s.error}>{error}</div>}
-
-      {/* 登録フォーム */}
-      <div style={s.card}>
-        <p style={s.cardTitle}>ユーザー登録</p>
-        <div style={s.row}>
-          <input
-            style={s.input}
-            type="text"
-            placeholder="名前"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            style={s.input}
-            type="email"
-            placeholder="メールアドレス"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <button style={s.btnPrimary} onClick={handleCreate} disabled={loading}>
-            登録
-          </button>
-        </div>
+      {/* 背景グラフィック */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          fontSize: "clamp(120px, 22vw, 320px)",
+          fontWeight: 900,
+          letterSpacing: "-0.05em",
+          color: "transparent",
+          WebkitTextStroke: "0.5px #e0e0e0",
+          userSelect: "none",
+          whiteSpace: "nowrap",
+          pointerEvents: "none",
+          zIndex: 0,
+          lineHeight: 1,
+        }}
+      >
+        USERS
       </div>
 
-      {/* ユーザー一覧 */}
-      <div style={s.card}>
-        <p style={s.cardTitle}>ユーザー一覧{loading && <span style={{ fontWeight: 400, fontSize: 13, marginLeft: 10, color: "var(--text)" }}>読み込み中…</span>}</p>
-        {users.length === 0 ? (
-          <p style={s.empty}>ユーザーがいません</p>
-        ) : (
-          <table style={s.table}>
-            <thead>
-              <tr>
-                {["ID", "名前", "メールアドレス", "作成日時", ""].map((h) => (
-                  <th key={h} style={s.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td style={s.tdMuted}>{user.id}</td>
-                  <td style={s.td}>{user.name}</td>
-                  <td style={s.td}>{user.email}</td>
-                  <td style={s.tdMuted}>{user.createdAt}</td>
-                  <td style={{ ...s.td, textAlign: "right" }}>
-                    <button style={s.btnDanger} onClick={() => handleDelete(user.id)}>削除</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* コンテンツ */}
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 960, margin: "0 auto", padding: "64px 40px" }}>
+
+        {/* ページタイトル */}
+        <div style={{ borderBottom: "0.5px solid #0a0a0a", paddingBottom: 24, marginBottom: 64 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+            <h1 style={{ fontSize: "clamp(36px, 6vw, 72px)", fontWeight: 300, letterSpacing: "-0.03em", lineHeight: 1, color: "#0a0a0a" }}>
+              User<br />Management
+            </h1>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "#999", marginBottom: 4 }}>Total</div>
+              <div style={{ fontSize: 48, fontWeight: 700, lineHeight: 1, color: "#0a0a0a" }}>{String(users.length).padStart(2, "0")}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* エラー */}
+        {error && (
+          <div style={{
+            borderLeft: "2px solid #0a0a0a",
+            paddingLeft: 16,
+            marginBottom: 40,
+            fontSize: 12,
+            letterSpacing: "0.05em",
+            color: "#0a0a0a",
+          }}>
+            {error}
+          </div>
         )}
+
+        {/* 登録フォーム */}
+        <div style={{ marginBottom: 80 }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.25em", textTransform: "uppercase", color: "#999", marginBottom: 20 }}>
+            — Register New User
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 0, border: "0.5px solid #0a0a0a" }}>
+            <input
+              type="text"
+              placeholder="NAME"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                padding: "18px 20px",
+                fontSize: 12,
+                letterSpacing: "0.1em",
+                border: "none",
+                borderRight: "0.5px solid #0a0a0a",
+                outline: "none",
+                background: "transparent",
+                color: "#0a0a0a",
+              }}
+            />
+            <input
+              type="email"
+              placeholder="EMAIL ADDRESS"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{
+                padding: "18px 20px",
+                fontSize: 12,
+                letterSpacing: "0.1em",
+                border: "none",
+                borderRight: "0.5px solid #0a0a0a",
+                outline: "none",
+                background: "transparent",
+                color: "#0a0a0a",
+              }}
+            />
+            <button
+              onClick={handleCreate}
+              disabled={loading}
+              style={{
+                padding: "18px 32px",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                background: loading ? "#f5f5f5" : "#0a0a0a",
+                color: loading ? "#999" : "#fff",
+                border: "none",
+                cursor: loading ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {loading ? "..." : "Register"}
+            </button>
+          </div>
+        </div>
+
+        {/* ユーザー一覧 */}
+        <div>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 20,
+          }}>
+            <div style={{ fontSize: 9, letterSpacing: "0.25em", textTransform: "uppercase", color: "#999" }}>
+              — Registered Users
+            </div>
+            {loading && (
+              <div style={{ fontSize: 9, letterSpacing: "0.15em", textTransform: "uppercase", color: "#999" }}>
+                Loading...
+              </div>
+            )}
+          </div>
+
+          {users.length === 0 ? (
+            <div style={{
+              border: "0.5px solid #e8e8e8",
+              padding: "80px 40px",
+              textAlign: "center",
+            }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "#ccc" }}>
+                No Users Registered
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 0, border: "0.5px solid #0a0a0a" }}>
+              {users.map((user, i) => (
+                <div
+                  key={user.id}
+                  style={{
+                    padding: "28px 28px",
+                    borderRight: (i + 1) % 3 === 0 ? "none" : "0.5px solid #0a0a0a",
+                    borderBottom: "0.5px solid #0a0a0a",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 16,
+                  }}
+                >
+                  {/* アバター + 名前 */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      border: "0.5px solid #0a0a0a",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      letterSpacing: "0.05em",
+                      flexShrink: 0,
+                      color: "#0a0a0a",
+                    }}>
+                      {initials(user.name)}
+                    </div>
+                    <div style={{ overflow: "hidden" }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em", color: "#0a0a0a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {user.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#999", letterSpacing: "0.03em", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {user.email}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* メタ情報 + 削除 */}
+                  <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", borderTop: "0.5px solid #e8e8e8", paddingTop: 12 }}>
+                    <div style={{ fontSize: 9, color: "#bbb", letterSpacing: "0.05em", fontFamily: "var(--mono)" }}>
+                      {user.createdAt}
+                    </div>
+                    <button
+                      onClick={() => handleDelete(user.id)}
+                      style={{
+                        fontSize: 9,
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase",
+                        background: "transparent",
+                        border: "0.5px solid #0a0a0a",
+                        padding: "4px 10px",
+                        cursor: "pointer",
+                        color: "#0a0a0a",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
