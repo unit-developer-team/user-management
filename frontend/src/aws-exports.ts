@@ -2,8 +2,8 @@
 const awsConfig = {
   Auth: {
     Cognito: {
-      userPoolId: "ap-northeast-1_HNp0vXOzs",        // ユーザープールID
-      userPoolClientId: "3eicnvugve43fq407ucs3tg2m3", // アプリクライアントID
+      userPoolId:  import.meta.env.VITE_USER_POOL_ID,        // ユーザープールID
+      userPoolClientId: import.meta.env.VITE_USER_POOL_CLIENT_ID, // アプリクライアントID
       region: "ap-northeast-1",
     }
   }
