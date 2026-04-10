@@ -24,18 +24,18 @@ beforeEach(() => {
 describe("userApi", () => {
   describe("getUsers", () => {
     it("ユーザー一覧を取得できる", async () => {
-  const mockUsers = [
-    { id: "1", name: "テストユーザー", email: "test@example.com", createdAt: "2024-01-01" }
-  ];
+      const mockUsers = [
+        { id: "1", name: "テストユーザー", email: "test@example.com", createdAt: "2024-01-01" }
+      ];
 
-  mockFetch.mockResolvedValue({
-    ok: true,
-    json: async () => mockUsers,
-  });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => mockUsers,
+      });
 
-  const result = await getUsers();
-  expect(result).toEqual([]); // 意図的に失敗させる
-});
+      const result = await getUsers();
+      expect(result).toEqual(mockUsers);
+    });
 
     it("取得失敗時にエラーをスローする", async () => {
       mockFetch.mockResolvedValue({
