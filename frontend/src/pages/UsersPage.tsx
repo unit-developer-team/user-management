@@ -65,37 +65,34 @@ function UsersPage() {
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "calc(100vh - 84px)", overflow: "hidden" }}>
-
-      {/* 背景グラフィック */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          fontSize: "clamp(120px, 22vw, 320px)",
-          fontWeight: 900,
-          letterSpacing: "-0.05em",
-          color: "transparent",
-          WebkitTextStroke: "0.5px #e0e0e0",
-          userSelect: "none",
-          whiteSpace: "nowrap",
-          pointerEvents: "none",
-          zIndex: 0,
-          lineHeight: 1,
-        }}
-      >
-        USERS
-      </div>
+    <div style={{ position: "relative", minHeight: "calc(100vh - 84px)", overflow: "hidden", backgroundImage: "url('/7f30c12b-5d08-41e3-b6c7-b4bdb75a6425.png')", backgroundSize: "cover", backgroundPosition: "center" }}>
 
       {/* コンテンツ */}
       <div style={{ position: "relative", zIndex: 1, maxWidth: 960, margin: "0 auto", padding: "64px 40px" }}>
 
         {/* ページタイトル */}
-        <div style={{ borderBottom: "0.5px solid #0a0a0a", paddingBottom: 24, marginBottom: 64 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div style={{ position: "relative", borderBottom: "0.5px solid #0a0a0a", paddingBottom: 24, marginBottom: 64, overflow: "hidden" }}>
+          {/* 背景グラフィック */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              bottom: -20,
+              left: -10,
+              fontSize: "clamp(80px, 18vw, 220px)",
+              fontWeight: 900,
+              letterSpacing: "-0.05em",
+              color: "transparent",
+              WebkitTextStroke: "0.5px #e0e0e0",
+              userSelect: "none",
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+              lineHeight: 1,
+            }}
+          >
+            USERS
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", position: "relative" }}>
             <h1 style={{ fontSize: "clamp(36px, 6vw, 72px)", fontWeight: 300, letterSpacing: "-0.03em", lineHeight: 1, color: "#0a0a0a" }}>
               User<br />Management
             </h1>
@@ -276,6 +273,7 @@ function UsersPage() {
         </div>
 
       </div>
+
     </div>
   );
 }

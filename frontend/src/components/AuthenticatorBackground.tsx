@@ -10,7 +10,7 @@ export default function AuthenticatorBackground({ children }: Props) {
     <div
       style={{
         minHeight: "100vh",
-        backgroundImage: "url('/bg.avif')",
+        backgroundImage: "url('/7f30c12b-5d08-41e3-b6c7-b4bdb75a6425.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         display: "flex",
