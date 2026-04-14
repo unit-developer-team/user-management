@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create ECS Task Test
+
+Resources:
+  ########################################################
+  ### ECS Cluster　
+  ########################################################
+  TestEcsCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: "user-management-cluster"
+
+  ########################################################
+  ### ECS LogGroup
+  ########################################################
+  EcsLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: "/ecs/user-management-api-task"
+      RetentionInDays: 14
+      # 必要なら KMS を追加
+      # KmsKeyId: alias/aws/logs
+
+  ########################################################
+  ### Target Group
+  ########################################################
+  TestTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      VpcId: !ImportValue MyVpcId #スタック A で作ったリソースを、スタック B で使うときは スタック A:Export / スタック B:ImportValue を使う 
+      Name: "test-target-group"
+      Protocol: HTTP
+      Port: 80
+      TargetType: ip
+
+  ########################################################
+  ### Internet ALB
+  ########################################################
+  TestInternetAlb:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name: "test-internet-alb"
+      Scheme: "internet-facing"
+      Tags:
+        - Key: Name
+          Value: "test-internet-alb"
+      LoadBalancerAttributes:
+        - Key: "deletion_protection.enabled"
+          Value: false
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 60
+        - Key: "access_logs.s3.enabled"
+          Value: true
+        - Key: "access_logs.s3.bucket"
+          Value: "test-s3b-alb-logs"
+      SecurityGroups:
+        - "sg-11111111111111111"
+      Subnets:
+        - "subnet-11111111111111111"
+        - "subnet-22222222222222222"
+
+  ########################################################
+  ### ALB Listener
+  ########################################################
+  TestAlbListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      LoadBalancerArn: !Ref TestInternetAlb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TestTargetGroup
+
+  ########################################################
+  ### ECS Task Execution Role #タスク実行ロール　 タスクが起動するときに必要なロール（ECR からコンテナイメージを pull するetc...）
+  ########################################################
+  TestEcsTaskExecRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "test-ecs-task-exec-role"
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  
+  ########################################################
+  ### ECS Task  Role #タスクロール　 アプリが AWS にアクセスするためのロール（S3 にアクセスするetc...）
+  ########################################################
+  TestEcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "user-management-ecs-task-rolePolicy"
+      AssumeRolePolicyDocument: #信頼ポリシー: 「誰がこのロールを使っていいか？」を決める
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      Policies: #カスタムポリシー
+      - PolicyName: AppAccess
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                 - dynamodb:GetItem
+                 - dynamodb:PutItem
+                 - dynamodb:DeleteItem
+                 - dynamodb:Scan
+              Resource: !ImportValue UsersTableArn
+
+  ########################################################
+  ### ECS Task Definition
+  ########################################################
+  TestEcsTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      Family: "test-ecs-task"
+      Cpu: 256
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref TestEcsTaskExecRole
+      ContainerDefinitions:
+        - Name: "user-management-api"
+          Image: "111111111111.dkr.ecr.ap-northeast-1.amazonaws.com/test-ecr-repo:latest"
+          MemoryReservation: 128
+          PortMappings:
+            - ContainerPort: 3000
+              HostPort: 3000
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref EcsLogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: "ecs"
+
+  ########################################################
+  ### ECS Service
+  ########################################################
+  TestEcsService:
+    Type: "AWS::ECS::Service"
+    Properties:
+      ServiceName: "test-ecs-service"
+      Cluster: !Ref TestEcsCluster
+      TaskDefinition: !Ref TestEcsTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: "test-ecs-container"
+          ContainerPort: 80
+          TargetGroupArn: !Ref TestTargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - "sg-11111111111111111"
+          Subnets:
+            - "subnet-11111111111111111"
+            - "subnet-22222222222222222"
+
+Outputs:
+  TestEcsCluster:
+    Value: !Ref TestEcsCluster
+    Export:
+      Name: TestEcsCluster
+
+  TestEcsLogGroup:
+    Value: !Ref TestEcsLogGroup
+    Export:
+      Name: TestEcsLogGroup
+
+  TestTargetGroup:
+    Value: !Ref TestTargetGroup
+    Export:
+      Name: TestTargetGroup
+
+  TestAlbListener:
+    Value: !Ref TestAlbListener
+    Export:
+      Name: TestAlbListener

@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "DynamoDB"
+
+Resources:
+  User:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "UsersTable"
+      BillingMode: PAY_PER_REQUEST #オンデマンドモードで起動
+      AttributeDefinitions: #主キーや GSI のキーに使う属性の “名前と型” を事前に登録するための設定
+        - AttributeName: "id"
+          AttributeType: "S"
+      KeySchema: # テーブルや GSI の “キーの役割” を決める設定
+        - AttributeName: "id"
+          KeyType: "HASH" #IDをパーティションキーに
+ 

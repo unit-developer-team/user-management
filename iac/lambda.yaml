@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: temporary lambda function
+Parameters:
+    FunctionName:
+        Description: Function Name you want to create.
+        Type: String
+    S3Bucket:
+        Description: location of artifact
+        Type: String
+    DeployPackageName:
+        Description: Zip Package Name you has been uploaded.
+        Type: String
+
+Resources:
+######## Lambda Function
+    LambdaFunction:
+        Type: AWS::Lambda::Function
+        Properties:
+            Description: Lambda Function
+            FunctionName: !Ref FunctionName  #関数名
+            Architectures:
+                - x86_64
+            Handler: handlers/userHandler.handler #最初に実行される関数
+            Code:
+                S3Bucket: !Ref S3Bucket #Lambda の zip を置いた S3 バケット名
+                S3Key: !Ref DeployPackageName #	zip ファイル名
+            MemorySize: 128
+            Role: !GetAtt IAMRole.Arn
+            Runtime: nodejs24.x
+            Timeout: 30
+            TracingConfig: 
+                Mode: PassThrough
+        DependsOn: IAMRole #このリソースより先に、指定したリソースを作る
+
+######## Lambda Log Group
+    LogsLogGroup:
+        Type: AWS::Logs::LogGroup
+        Properties:
+            LogGroupName: !Sub "/aws/lambda/${FunctionName}"
+            RetentionInDays: 14
+        DependsOn: LambdaFunction
+
+######## IAMRole
+    IAMRole:
+        Type: AWS::IAM::Role
+        Properties:
+            Path: /
+            RoleName: !Sub ${FunctionName}-role
+            AssumeRolePolicyDocument: | #信頼ポリシー: 「誰がこのロールを使っていいか？」を決める
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "lambda.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                        }
+                    ]
+                }
+            MaxSessionDuration: 3600
+            ManagedPolicyArns:  #権限ポリシー:  「このロールを使った Lambda が何をしていいか？」を決める
+              - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+            Description: Allows Lambda functions to call AWS services on your behalf.
