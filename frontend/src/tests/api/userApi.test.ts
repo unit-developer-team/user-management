@@ -15,7 +15,7 @@ vi.mock("aws-amplify/auth", () => ({
 
 // fetchをモック
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+global.fetch = mockFetch; // 処理の中でfetchが呼ばれたら、mockFetch に差し変わる
 
 beforeEach(() => {
   mockFetch.mockReset();
@@ -28,13 +28,13 @@ describe("userApi", () => {
         { id: "1", name: "テストユーザー", email: "test@example.com", createdAt: "2024-01-01" }
       ];
 
-      mockFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({ //mockFetchはOKとmockUsersを返す
         ok: true,
         json: async () => mockUsers,
       });
 
       const result = await getUsers();
-      expect(result).toEqual(mockUsers);
+       expect(result).toEqual([]); // 意図的に失敗させる
     });
 
     it("取得失敗時にエラーをスローする", async () => {

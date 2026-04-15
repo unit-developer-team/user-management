@@ -3,7 +3,7 @@ import { getAllUsers, getUserById, createUser, deleteUser } from "../../src/serv
 import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
-const ddbMock = mockClient(DynamoDBDocumentClient);
+const ddbMock = mockClient(DynamoDBDocumentClient); //DynamoDBDocumentClient をモック
 
 beforeEach(() => {
   ddbMock.reset();
@@ -20,7 +20,7 @@ describe("dynamoService", () => {
       ];
       ddbMock.on(ScanCommand).resolves({ Items: mockUsers });
 
-      const result = await getAllUsers();
+      const result = await getAllUsers(); //getAllUsers の内部で ScanCommand が実行されるとddbMock が返す Items: mockUsers が返る
 
       expect(result).toEqual(mockUsers);
     });
