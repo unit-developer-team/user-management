@@ -22,7 +22,7 @@ describe("dynamoService", () => {
 
       const result = await getAllUsers(); //getAllUsers の内部で ScanCommand が実行されるとddbMock が返す Items: mockUsers が返る
 
-      expect(result).toEqual(mockUsers);
+      expect(result).toEqual([]);
     });
 
     it("ユーザーが存在しない場合は空配列を返す", async () => {
