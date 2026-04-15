@@ -19,9 +19,11 @@ phases:
 
   build:
     commands:
-      - echo Build started on `date`
-      - echo Building the Docker image...
+      - echo Running tests...
       - cd containers/api
+      - npm ci
+      - npm test
+      - echo Building Docker image...
       - docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
       - docker tag $ECR_REPOSITORY:$IMAGE_TAG $IMAGE_URI
       - cd $CODEBUILD_SRC_DIR

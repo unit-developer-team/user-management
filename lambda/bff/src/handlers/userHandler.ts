@@ -5,25 +5,26 @@ import { unauthorized, badRequest } from "../utils/response";
 import { validate } from "../utils/validate";
 
 export const handler = async (event: APIGatewayEvent) => {
-
   // ① 認証情報の取得
   const userId = event.requestContext.authorizer?.claims?.sub;
   if (!userId) return unauthorized();
 
-  // ② GETはバリデーション不要なのでそのまま転送
-  if (event.httpMethod === "GET") {
+  const method = event.httpMethod;
+
+  // ② GET と DELETE はバリデーション不要
+  if (method === "GET" || method === "DELETE") {
     return await forwardToApi(event);
   }
 
-  // ③ GET以外は入力バリデーション
+  // ③ POST などは入力バリデーション
   const validated = validate(event.body);
   if (!validated.ok) return badRequest(validated.error);
 
   // ④ 振り分け
-  switch (event.httpMethod) {
+  switch (method) {
     case "POST":
-    case "DELETE":
       return await forwardToApi(event);
+
     default:
       return {
         statusCode: 405,

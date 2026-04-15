@@ -39,11 +39,11 @@ Resources:
   TestInternetAlb:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties:
-      Name: "test-internet-alb"
+      Name: "user-management-alb"
       Scheme: "internet-facing"
       Tags:
         - Key: Name
-          Value: "test-internet-alb"
+          Value: "user-management-alb"
       LoadBalancerAttributes:
         - Key: "deletion_protection.enabled"
           Value: false
@@ -75,7 +75,7 @@ Resources:
   ########################################################
   ### ECS Task Execution Role #タスク実行ロール　 タスクが起動するときに必要なロール（ECR からコンテナイメージを pull するetc...）
   ########################################################
-  TestEcsTaskExecRole:
+  UserEcsTaskExecRole:
     Type: "AWS::IAM::Role"
     Properties:
       RoleName: "test-ecs-task-exec-role"
@@ -94,7 +94,7 @@ Resources:
   ########################################################
   ### ECS Task  Role #タスクロール　 アプリが AWS にアクセスするためのロール（S3 にアクセスするetc...）
   ########################################################
-  TestEcsTaskRole:
+  UserEcsTaskRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: "user-management-ecs-task-rolePolicy"
@@ -130,7 +130,13 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      ExecutionRoleArn: !Ref TestEcsTaskExecRole
+
+       # ECS がタスクを起動するためのロール
+      ExecutionRoleArn: !Ref UserEcsTaskExecRole
+
+      # コンテナ内アプリが DynamoDB にアクセスするためのロール
+      TaskRoleArn: !Ref UserEcsTaskRole
+      
       ContainerDefinitions:
         - Name: "user-management-api"
           Image: "111111111111.dkr.ecr.ap-northeast-1.amazonaws.com/test-ecr-repo:latest"

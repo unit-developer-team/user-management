@@ -9,18 +9,18 @@ const handler = async (event) => {
     const userId = event.requestContext.authorizer?.claims?.sub;
     if (!userId)
         return (0, response_1.unauthorized)();
-    // ② GETはバリデーション不要なのでそのまま転送
-    if (event.httpMethod === "GET") {
+    const method = event.httpMethod;
+    // ② GET と DELETE はバリデーション不要
+    if (method === "GET" || method === "DELETE") {
         return await (0, apiForwarder_1.forwardToApi)(event);
     }
-    // ③ GET以外は入力バリデーション
+    // ③ POST などは入力バリデーション
     const validated = (0, validate_1.validate)(event.body);
     if (!validated.ok)
         return (0, response_1.badRequest)(validated.error);
     // ④ 振り分け
-    switch (event.httpMethod) {
+    switch (method) {
         case "POST":
-        case "DELETE":
             return await (0, apiForwarder_1.forwardToApi)(event);
         default:
             return {
