@@ -34,7 +34,7 @@ describe("userApi", () => {
       });
 
       const result = await getUsers();
-       expect(result).toEqual([]); // 意図的に失敗させる
+      expect(result).toEqual(mockUsers);
     });
 
     it("取得失敗時にエラーをスローする", async () => {
