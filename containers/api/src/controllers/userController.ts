@@ -7,6 +7,11 @@ import { v4 as uuidv4 } from "uuid";
 export const getUsers = async (req: Request, res: Response) => {
   try {
     const users = await getAllUsers();
+
+    users.forEach(user => {
+    user.name = `${user.name}さん`;
+    });
+
     res.status(200).json(users);
   } catch (err) {
     console.error("ユーザー一覧取得エラー", err);
