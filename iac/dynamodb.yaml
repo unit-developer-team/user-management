@@ -4,6 +4,8 @@ Description: "DynamoDB"
 Resources:
   User:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: "UsersTable"
       BillingMode: PAY_PER_REQUEST #オンデマンドモードで起動
@@ -13,4 +15,14 @@ Resources:
       KeySchema: # テーブルや GSI の “キーの役割” を決める設定
         - AttributeName: "id"
           KeyType: "HASH" #IDをパーティションキーに
- 
+
+Outputs: #テーブル名とARNを外部公開
+  UsersTableName:
+    Value: !Ref User
+    Export:
+      Name: UsersTableName
+
+  UsersTableArn:
+    Value: !GetAtt User.Arn
+    Export:
+      Name: UsersTableArn
