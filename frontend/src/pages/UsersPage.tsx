@@ -94,7 +94,7 @@ function UsersPage() {
           </div>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", position: "relative" }}>
             <h1 style={{ fontSize: "clamp(36px, 6vw, 72px)", fontWeight: 300, letterSpacing: "-0.03em", lineHeight: 1, color: "#0a0a0a" }}>
-              User<br />Management
+              User<br />Management ver2
             </h1>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "#999", marginBottom: 4 }}>Total</div>
