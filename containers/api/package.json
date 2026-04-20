@@ -7,7 +7,10 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "jest"
+  "build": "tsc",
+  "start": "node dist/app.js",
+  "dev": "ts-node src/app.ts",
+  "test": "jest"
   },
   "keywords": [],
   "author": "",
