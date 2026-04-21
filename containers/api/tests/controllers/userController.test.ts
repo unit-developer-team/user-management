@@ -14,6 +14,7 @@ const mockDeleteUser = dynamoService.deleteUser as jest.MockedFunction<typeof dy
 const mockReq = (overrides = {}) => ({
   params: {},
   body: {},
+  headers: {},
   ...overrides,
 }) as unknown as Request;
 
