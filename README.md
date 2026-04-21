@@ -385,6 +385,48 @@ DISP-Unit-Project/
 
 ---
 
+## 🚫 ログ設計
+
+### 形式
+全ログはJSON形式で出力しています。
+
+### フィールド
+| フィールド | 説明 |
+|------------|------|
+| level | ログレベル（下記参照） |
+| message | ログの内容 |
+| request_id | リクエストの追跡ID |
+| timestamp | 発生時刻（ISO 8601形式） |
+
+### ログレベルの定義
+
+| レベル | 用途 | 例 |
+|--------|------|----|
+| INFO | 正常な処理の記録 | リクエスト受信、DB取得成功 |
+| WARN | 動いているが注意が必要 | リトライ発生、レスポンスが遅い |
+| ERROR | 対応が必要な問題 | API失敗、DB接続エラー |
+
+### レベルの判断基準
+- ユーザーに影響が出ていない → WARN
+- ユーザーに影響が出ている　 → ERROR
+- 正常な処理の記録　　　　　 → INFO
+
+### CloudWatchでの確認方法
+
+**エラーだけ見たい**
+```sql
+fields @timestamp, level, message, request_id
+| filter level = "ERROR"
+| sort @timestamp desc
+```
+
+**特定リクエストを追いたい**
+```sql
+fields @timestamp, level, message
+| filter request_id = "abc-123"
+| sort @timestamp asc
+```
+
 ## 🔮 ロードマップ
 
 現在は**トライアル開発の最小構成**として動作する状態です。複数チームが本格的にこの基盤を使い始める次のフェーズに向けて、以下の優先順位で拡張を進めます。

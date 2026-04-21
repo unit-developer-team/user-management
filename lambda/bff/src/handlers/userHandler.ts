@@ -3,6 +3,7 @@ import { APIGatewayEvent } from "aws-lambda";
 import { forwardToApi } from "../services/apiForwarder";
 import { unauthorized, badRequest } from "../utils/response";
 import { validate } from "../utils/validate";
+import { logInfo } from "../utils/logger";
 
 export const handler = async (event: APIGatewayEvent) => {
   // ① 認証情報の取得
@@ -10,6 +11,7 @@ export const handler = async (event: APIGatewayEvent) => {
   if (!userId) return unauthorized();
 
   const method = event.httpMethod;
+  logInfo("リクエスト受付", event, { method, path: event.path, userId });
 
   // ② GET と DELETE はバリデーション不要
   if (method === "GET" || method === "DELETE") {
@@ -18,7 +20,10 @@ export const handler = async (event: APIGatewayEvent) => {
 
   // ③ POST などは入力バリデーション
   const validated = validate(event.body);
-  if (!validated.ok) return badRequest(validated.error);
+  if (!validated.ok) {
+    logInfo("バリデーションエラー", event, { method, body: event.body });
+    return badRequest(validated.error);
+  }
 
   // ④ 振り分け
   switch (method) {

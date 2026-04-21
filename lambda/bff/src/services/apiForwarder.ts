@@ -1,5 +1,6 @@
 // services/apiForwarder.ts
 import { APIGatewayEvent } from "aws-lambda";
+import { logError, logInfo } from "../utils/logger";
 
 const shape = (data: unknown) => data;
 
@@ -13,13 +14,9 @@ export const forwardToApi = async (event: APIGatewayEvent) => {
   const path = event.path ?? "/users";
   const url = `${albUrl}${path}`;
 
- 
-  console.log("event.path:", event.path);
-  console.log("event.httpMethod:", event.httpMethod);
-  console.log("転送先URL:", url);
-  console.log("INTERNAL_TOKEN:", internalToken);
 
   try {
+    logInfo("ECSへの転送 開始", event, { method: event.httpMethod, path: url });
     const res = await fetch(url, {
       method: event.httpMethod,
       headers: {
@@ -31,11 +28,8 @@ export const forwardToApi = async (event: APIGatewayEvent) => {
     });
 
     if (!res.ok) {
-      console.error(
-        "APIコンテナへの転送失敗",
-        res.status,
-        await res.text()
-      );
+      const resText = await res.text();
+      logError("APIコンテナへの転送失敗", new Error(resText), event, { status: res.status, path: url });
       return {
         statusCode: res.status,
         body: JSON.stringify({ message: "Bad Gateway" }),
@@ -44,7 +38,7 @@ export const forwardToApi = async (event: APIGatewayEvent) => {
 
     const data = await res.json();
 
-    // JS にあった CORS ヘッダも TS に反映
+    logInfo("ECSへの転送 完了", event, { status: res.status, path: url });
     return {
       statusCode: res.status,
       headers: {
@@ -56,7 +50,7 @@ export const forwardToApi = async (event: APIGatewayEvent) => {
     };
 
   } catch (err) {
-    console.error("APIコンテナへの接続エラー", err);
+    logError("APIコンテナへの接続エラー", err, event, { path: url });
     return {
       statusCode: 500,
       body: JSON.stringify({ message: "Internal Server Error" }),
