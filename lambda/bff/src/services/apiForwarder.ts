@@ -1,19 +1,46 @@
 // services/apiForwarder.ts
 import { APIGatewayEvent } from "aws-lambda";
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { logError, logInfo } from "../utils/logger";
+
+const sm = new SecretsManagerClient({ region: "ap-northeast-1" });
 
 const shape = (data: unknown) => data;
 
-export const forwardToApi = async (event: APIGatewayEvent) => {
-  const albUrl = process.env.ALB_URL;
-  const internalToken = process.env.INTERNAL_TOKEN;
-  if (!albUrl || !internalToken) {
-    throw new Error("環境変数が設定されていません");
+interface Config {
+  albUrl: string;
+  internalToken: string;
+}
+
+// コールドスタート時のみ取得
+let cachedConfig: Config | null = null;
+
+const getConfig = async (): Promise<Config> => {
+  if (cachedConfig) return cachedConfig;
+
+  const res = await sm.send(
+    new GetSecretValueCommand({ SecretId: "/myapp/prod/config" })
+  );
+
+  const secret = JSON.parse(res.SecretString ?? "{}");
+
+  if (!secret.ALB_URL || !secret.INTERNAL_TOKEN) {
+    throw new Error("シークレットに必要な値が設定されていません");
   }
+
+  cachedConfig = {
+    albUrl: secret.ALB_URL,
+    internalToken: secret.INTERNAL_TOKEN,
+  };
+
+  return cachedConfig;
+};
+
+export const forwardToApi = async (event: APIGatewayEvent) => {
+  const { albUrl, internalToken } = await getConfig();
 
   const path = event.path ?? "/users";
   const url = `${albUrl}${path}`;
-
 
   try {
     logInfo("ECSへの転送 開始", event, { method: event.httpMethod, path: url });

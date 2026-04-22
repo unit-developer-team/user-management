@@ -1,14 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.forwardToApi = void 0;
+const client_secrets_manager_1 = require("@aws-sdk/client-secrets-manager");
 const logger_1 = require("../utils/logger");
+const sm = new client_secrets_manager_1.SecretsManagerClient({ region: "ap-northeast-1" });
 const shape = (data) => data;
-const forwardToApi = async (event) => {
-    const albUrl = process.env.ALB_URL;
-    const internalToken = process.env.INTERNAL_TOKEN;
-    if (!albUrl || !internalToken) {
-        throw new Error("環境変数が設定されていません");
+// コールドスタート時のみ取得
+let cachedConfig = null;
+const getConfig = async () => {
+    if (cachedConfig)
+        return cachedConfig;
+    const res = await sm.send(new client_secrets_manager_1.GetSecretValueCommand({ SecretId: "/myapp/prod/config" }));
+    const secret = JSON.parse(res.SecretString ?? "{}");
+    if (!secret.ALB_URL || !secret.INTERNAL_TOKEN) {
+        throw new Error("シークレットに必要な値が設定されていません");
     }
+    cachedConfig = {
+        albUrl: secret.ALB_URL,
+        internalToken: secret.INTERNAL_TOKEN,
+    };
+    return cachedConfig;
+};
+const forwardToApi = async (event) => {
+    const { albUrl, internalToken } = await getConfig();
     const path = event.path ?? "/users";
     const url = `${albUrl}${path}`;
     try {

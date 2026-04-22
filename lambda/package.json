@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1033.0"
+  }
+}
