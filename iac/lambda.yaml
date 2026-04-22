@@ -11,9 +11,6 @@ Parameters:
   DeployPackageName:
     Description: Name of the zip file (e.g., v1.0.0/package.zip).
     Type: String
-  AlbDnsNameParam:
-    Description: DNS name of the ALB (from ECS stack output).
-    Type: String
 
 Resources:
   # ============================================================
@@ -49,7 +46,7 @@ Resources:
       ManagedPolicyArns:
         # 基本的な実行権限（CloudWatch Logsへの出力）
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        # X-Rayへの書き込み権限（ご提示いただいたJSONと同等の権限）
+        # X-Rayへの書き込み権限
         - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
         # 上記で定義したSecrets Managerへのアクセス権限
         - !Ref SecretsManagerReadPolicy
@@ -84,10 +81,6 @@ Resources:
       Role: !GetAtt IAMRole.Arn
       Runtime: nodejs24.x # Node.jsの安定版を指定
       Timeout: 30
-      Environment:
-        Variables:
-          ALB_URL: !Sub "http://${AlbDnsNameParam}" # ECSスタックのAlbDnsNameをパラメータで渡す
-          INTERNAL_TOKEN: !Sub "{{resolve:secretsmanager:/myapp/prod/config:SecretString:INTERNAL_TOKEN}}"
       TracingConfig:
         # Activeに設定することで、このLambda自体のトレースを詳細に取得します
         Mode: Active
