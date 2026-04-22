@@ -7,7 +7,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: "UsersTable"
+      TableName: !Sub "${AWS::StackName}-UsersTable"
       BillingMode: PAY_PER_REQUEST #オンデマンドモードで起動
       AttributeDefinitions: #主キーや GSI のキーに使う属性の “名前と型” を事前に登録するための設定
         - AttributeName: "id"

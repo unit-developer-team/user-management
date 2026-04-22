@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  # 1. API Gateway 本体
+  MyHttpApi:
+    Type: "AWS::ApiGatewayV2::Api"
+    Properties:
+      Name: "user-api-with-auth"
+      ProtocolType: "HTTP"
+      CorsConfiguration:
+        AllowCredentials: false
+        AllowHeaders: ["Content-Type", "Authorization"]
+        AllowMethods: ["GET", "POST", "DELETE", "OPTIONS"]
+        AllowOrigins: ["*"]
+
+  # 2. オーソライザー（認証の設定）
+  MyApiAuthorizer:
+    Type: "AWS::ApiGatewayV2::Authorizer"
+    Properties:
+      ApiId: !Ref MyHttpApi
+      Name: "CognitoAuthorizer"
+      AuthorizerType: "JWT" #JSON Web Token
+      IdentitySource: ["$request.header.Authorization"] #合言葉（トークン）はリクエストのどこに入っているか ヘッダーの Authorization 項目
+      JwtConfiguration:
+        Audience: [!ImportValue "Cognito-UserPoolClientId"]
+        Issuer: !Sub 
+          - "https://cognito-idp.${AWS::Region}.amazonaws.com/${PoolIdVar}" #信頼できるCognitoのURL（発行元）を指定
+          - PoolIdVar: !ImportValue "Cognito-UserPoolId"
+
+  # Lambda呼び出し許可: API GatewayがLambdaを実行できるようにする
+  LambdaInvokePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      FunctionName: !ImportValue "MyProject-LambdaArn"
+      Action: "lambda:InvokeFunction"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyHttpApi}/*/*"
+
+  # 3. 統合設定 (Lambdaとの紐付け)
+  MyIntegration:
+    Type: "AWS::ApiGatewayV2::Integration"
+    Properties:
+      ApiId: !Ref MyHttpApi
+      IntegrationType: "AWS_PROXY"
+      IntegrationUri: !ImportValue "MyProject-LambdaArn"
+      PayloadFormatVersion: "2.0"
+
+  # 4. ルート設定（認証あり）
+  GetUsersRoute:
+    Type: "AWS::ApiGatewayV2::Route"
+    Properties:
+      ApiId: !Ref MyHttpApi
+      RouteKey: "GET /users"
+      Target: !Sub "integrations/${MyIntegration}"
+      AuthorizationType: "JWT"
+      AuthorizerId: !Ref MyApiAuthorizer
+
+  PostUsersRoute:
+    Type: "AWS::ApiGatewayV2::Route"
+    Properties:
+      ApiId: !Ref MyHttpApi
+      RouteKey: "POST /users"
+      Target: !Sub "integrations/${MyIntegration}"
+      AuthorizationType: "JWT"
+      AuthorizerId: !Ref MyApiAuthorizer
+
+  GetUserByIdRoute:
+    Type: "AWS::ApiGatewayV2::Route"
+    Properties:
+      ApiId: !Ref MyHttpApi
+      RouteKey: "GET /users/{id}"
+      Target: !Sub "integrations/${MyIntegration}"
+      AuthorizationType: "JWT"
+      AuthorizerId: !Ref MyApiAuthorizer
+
+  DeleteUserRoute:
+    Type: "AWS::ApiGatewayV2::Route"
+    Properties:
+      ApiId: !Ref MyHttpApi
+      RouteKey: "DELETE /users/{id}"
+      Target: !Sub "integrations/${MyIntegration}"
+      AuthorizationType: "JWT"
+      AuthorizerId: !Ref MyApiAuthorizer
+
+  # 5. ステージ
+  MyStage:
+    Type: "AWS::ApiGatewayV2::Stage"
+    Properties:
+      ApiId: !Ref MyHttpApi
+      StageName: "$default"
+      AutoDeploy: true

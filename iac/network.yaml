@@ -1,46 +1,94 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Create an EC2 instance in a custom VPC
+Description: Network infrastructure for ECS Fargate on a custom VPC
+
+# ============================================================
+# このテンプレートの概要
+# ============================================================
+# カスタムVPC上にECS Fargate（コンテナ）を動かすための
+# ネットワーク基盤を構築するテンプレートです。
+#
+# 構成概要:
+#   [Internet]
+#       ↓ HTTP:80
+#   [ALB] (PublicSubnet / PublicSubnet2)
+#       ↓ TCP:3000
+#   [ECS Task] (PrivateSubnet)
+#       ↓ HTTPS:443 (VPC Endpoint経由)
+#   [ECR / CloudWatch Logs / S3 / DynamoDB]
+#
+# 主なリソース:
+#   - VPC (10.0.0.0/16)
+#   - パブリックサブネット x2  ※ALB配置用（マルチAZ）
+#   - プライベートサブネット x1 ※ECSタスク配置用
+#   - インターネットゲートウェイ
+#   - パブリック/プライベート ルートテーブル
+#   - VPCエンドポイント (S3, DynamoDB, ECR API, ECR DKR, CloudWatch Logs)
+#   - セキュリティグループ (ALB用, ECS用, VPCエンドポイント用)
+# ============================================================
+
 Resources:
+
+  # ------------------------------------------------------------
+  # VPC
+  # ------------------------------------------------------------
   MyVPC:
     Type: AWS::EC2::VPC
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
+      CidrBlock: 10.0.0.0/16       # VPC全体のIPアドレス範囲
+      EnableDnsSupport: true        # DNS解決を有効化（VPCエンドポイントのFQDN解決に必要）
+      EnableDnsHostnames: true      # DNSホスト名を有効化（インターフェース型VPCエンドポイントに必要）
       Tags:
         - Key: Name
           Value: MyVPC
 
+  # ------------------------------------------------------------
+  # サブネット
+  # ------------------------------------------------------------
+
+  # ALB配置用パブリックサブネット（AZ-0）
+  # ALBは2つのAZにまたがる必要があるためPublicSubnet2とペアで使用
   PublicSubnet:
     Type: AWS::EC2::Subnet
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       CidrBlock: 10.0.1.0/24
       VpcId: !Ref MyVPC
       AvailabilityZone:
         Fn::Select:
-          - 0
+          - 0                       # リージョン内の0番目のAZを自動選択
           - Fn::GetAZs: ""
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: true     # 起動時にパブリックIPを自動付与
       Tags:
         - Key: Name
           Value: PublicSubnet
 
+  # ALB配置用パブリックサブネット（AZ-1）
+  # ALBのマルチAZ要件を満たすための2つ目のサブネット
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       CidrBlock: 10.0.2.0/24
       VpcId: !Ref MyVPC
       AvailabilityZone:
         Fn::Select:
-          - 1
+          - 1                       # リージョン内の1番目のAZを自動選択
           - Fn::GetAZs: ""
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: PublicSubnet2
 
+  # ECSタスク配置用プライベートサブネット（AZ-0）
+  # インターネットへの直接経路なし。AWSサービスへはVPCエンドポイント経由でアクセス
   PrivateSubnet:
     Type: AWS::EC2::Subnet
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       CidrBlock: 10.0.10.0/24
       VpcId: !Ref MyVPC
@@ -48,41 +96,76 @@ Resources:
         Fn::Select:
           - 0
           - Fn::GetAZs: ""
-      MapPublicIpOnLaunch: false
+      MapPublicIpOnLaunch: false    # パブリックIPを付与しない（プライベートサブネット）
       Tags:
         - Key: Name
           Value: PrivateSubnet
 
+  # ------------------------------------------------------------
+  # インターネットゲートウェイ
+  # パブリックサブネットからインターネットへの出入口
+  # ------------------------------------------------------------
   InternetGateway:
     Type: AWS::EC2::InternetGateway
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
 
+  # InternetGatewayをVPCにアタッチ
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
       InternetGatewayId: !Ref InternetGateway
 
+  # ------------------------------------------------------------
+  # ルートテーブル
+  # ------------------------------------------------------------
+
+  # パブリックサブネット用ルートテーブル
+  # デフォルトルートをInternetGatewayに向ける（後述のPublicRouteで設定）
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
 
+  # プライベートサブネット用ルートテーブル
+  # インターネットへのルートなし。S3/DynamoDBへはVPCエンドポイント経由
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
 
+  # ------------------------------------------------------------
+  # VPCエンドポイント（Gateway型）
+  # プライベートサブネットからNATゲートウェイ不要でAWSサービスに接続
+  # Gateway型はルートテーブルにエントリが追加される（料金無料）
+  # ------------------------------------------------------------
+
+  # S3へのゲートウェイ型エンドポイント
+  # ECSタスクがECRイメージのレイヤー（S3保存）を取得するために使用
   S3Endpoint:
     Type: AWS::EC2::VPCEndpoint
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       RouteTableIds:
-        - !Ref PrivateRouteTable
+        - !Ref PrivateRouteTable   # プライベートサブネットのルートテーブルに追加
       VpcEndpointType: Gateway
 
+  # DynamoDBへのゲートウェイ型エンドポイント
+  # アプリケーションからDynamoDBへプライベート接続する場合に使用
   DynamodbEndpoint:
     Type: AWS::EC2::VPCEndpoint
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.dynamodb"
@@ -90,8 +173,29 @@ Resources:
         - !Ref PrivateRouteTable
       VpcEndpointType: Gateway
 
-  ALBSecurityGroup: #ECRとALBのセキュリティグループの循環参照回避のためIngress と Egress を別リソースに分ける　1.ALB　インバウンド
+  # ------------------------------------------------------------
+  # セキュリティグループ
+  #
+  # 【循環参照の回避策】
+  #   ALBSecurityGroup と ECSSecurityGroup は互いを参照するルールを持つため、
+  #   両方のリソース定義内に相手のSGを指定すると循環参照エラーになる。
+  #   これを避けるため、相互参照が発生するIngressルールとEgressルールを
+  #   独立したリソース（SecurityGroupIngress / SecurityGroupEgress）として後から追加する。
+  #
+  #   定義順と役割:
+  #   1. ALBSecurityGroup  : ALB用SG      Inbound定義  (Internet → ALB:80)
+  #   2. ECSSecurityGroup  : ECSタスク用SG Outbound定義 (ECSタスク → AWSサービス)
+  #   3. ALBEgressToECS    : ALB用SGへのOutboundルール追加  (ALB → ECSタスク:3000) ★別リソース
+  #   4. ECSIngressFromALB : ECSタスク用SGへのInboundルール追加 (ALB → ECSタスク:3000) ★別リソース
+  #   5. VpcEndpointSecurityGroup : VPCエンドポイント用SG (ECSタスク → エンドポイント:443)
+  # ------------------------------------------------------------
+
+  # 1. ALB用セキュリティグループ
+  #    Outbound（→ECSタスク:3000）は循環参照回避のため ALBEgressToECS で別途定義
+  ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       GroupDescription: Allow HTTP from internet
       VpcId: !Ref MyVPC
@@ -99,39 +203,57 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
+          CidrIp: 0.0.0.0/0        # 全インターネットからHTTP(80)を許可
 
-  ECRSecurityGroup: #2.ECR　アウトバウンド
+  # 2. ECSタスク用セキュリティグループ
+  #    Inbound（ALB→:3000）は循環参照回避のため ECSIngressFromALB で別途定義
+  ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
-      GroupDescription: Allow traffic from ALB
+      GroupDescription: Allow traffic for ECS Fargate
       VpcId: !Ref MyVPC
+      # FargateがS3(Gateway型)からイメージをプルする際、S3のパブリックIP帯域への通信が必要です。
+      # 確実に動作させるため、Outboundは一旦すべて許可に設定します。
       SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
           CidrIp: 0.0.0.0/0
 
-  ALBEgressToECR: #3.ALB　アウトバウンド
+  # 3. ALB用SGへのOutboundルール追加（循環参照回避のため別リソース）
+  #    ALB → ECSタスク:3000 への通信を許可
+  ALBEgressToECS:
     Type: AWS::EC2::SecurityGroupEgress
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       GroupId: !Ref ALBSecurityGroup
       IpProtocol: tcp
       FromPort: 3000
       ToPort: 3000
-      DestinationSecurityGroupId: !Ref ECRSecurityGroup
+      DestinationSecurityGroupId: !Ref ECSSecurityGroup  # 宛先をECSタスク用SGに限定
 
-  ECRIngressFromALB: #4.ECS アウトバウンド
+  # 4. ECSタスク用SGへのInboundルール追加（循環参照回避のため別リソース）
+  #    ALB → ECSタスク:3000 への通信を許可
+  ECRIngressFromALB:
     Type: AWS::EC2::SecurityGroupIngress
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
-      GroupId: !Ref ECRSecurityGroup
+      GroupId: !Ref ECSSecurityGroup
       IpProtocol: tcp
       FromPort: 3000
       ToPort: 3000
-      SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SourceSecurityGroupId: !Ref ALBSecurityGroup       # 送信元をALB用SGに限定
 
+  # 5. VPCエンドポイント（Interface型）用セキュリティグループ
+  #    ECSタスク用SG（ECSSecurityGroup）からのHTTPS(443)のみ受け付ける
   VpcEndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       GroupDescription: Allow HTTPS from ECS SG
       VpcId: !Ref MyVPC
@@ -139,10 +261,20 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          SourceSecurityGroupId: !Ref ECRSecurityGroup
+          SourceSecurityGroupId: !Ref ECSSecurityGroup   # ECSタスク用SGからのみ許可
 
+  # ------------------------------------------------------------
+  # VPCエンドポイント（Interface型）
+  # プライベートサブネットにENIが作成され、AWSサービスとプライベート通信できる
+  # ※Interface型は時間料金が発生するため不要なら削除を検討
+  # ------------------------------------------------------------
+
+  # ECR API エンドポイント
+  # ECSタスクがECRのAPIを呼び出す（イメージのメタデータ取得など）際に使用
   ECRAPIEndpoint:
     Type: AWS::EC2::VPCEndpoint
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.api"
@@ -152,8 +284,12 @@ Resources:
       SecurityGroupIds:
         - !Ref VpcEndpointSecurityGroup
 
+  # ECR Docker Registry エンドポイント
+  # ECSタスクがECRからDockerイメージをpullする際に使用
   ECRDKREndpoint:
     Type: AWS::EC2::VPCEndpoint
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.dkr"
@@ -163,8 +299,12 @@ Resources:
       SecurityGroupIds:
         - !Ref VpcEndpointSecurityGroup
 
+  # CloudWatch Logs エンドポイント
+  # ECSタスクのログをCloudWatch Logsへ送信する際に使用（awslogsドライバー）
   LOGSEndpoint:
     Type: AWS::EC2::VPCEndpoint
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       VpcId: !Ref MyVPC
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
@@ -174,34 +314,90 @@ Resources:
       SecurityGroupIds:
         - !Ref VpcEndpointSecurityGroup
 
+  # ------------------------------------------------------------
+  # ルートおよびサブネット関連付け
+  # ------------------------------------------------------------
+
+  # パブリックサブネットのデフォルトルート → InternetGateway
+  # DependsOn: IGWのアタッチ完了を待ってからルートを作成
   PublicRoute:
     Type: AWS::EC2::Route
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
+  # PublicSubnet（AZ-0）をパブリックルートテーブルに関連付け
   PublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
+  # PublicSubnet2（AZ-1）をパブリックルートテーブルに関連付け
   PublicSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
+  # PrivateSubnetをプライベートルートテーブルに関連付け
   PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
 
-Outputs:  #MyVpcId という名前で VPC ID を外部に公開
+# ------------------------------------------------------------
+# Outputs
+# 他のCloudFormationスタックから !ImportValue で参照可能
+# ------------------------------------------------------------
+Outputs:
+  # VPC
   VpcId:
+    Description: VPC ID
     Value: !Ref MyVPC
     Export:
-      Name: MyVpcId
+      Name: !Sub "${AWS::StackName}-VpcId"
+
+  # サブネット (ALB用)
+  PublicSubnet1:
+    Description: Public Subnet 1 ID (AZ-0)
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnet1"
+
+  PublicSubnet2:
+    Description: Public Subnet 2 ID (AZ-1)
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnet2"
+
+  # サブネット (ECS用)
+  PrivateSubnet:
+    Description: Private Subnet ID for ECS Tasks
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateSubnet"
+
+  # セキュリティグループ
+  ALBSecurityGroup:
+    Description: Security Group ID for ALB
+    Value: !Ref ALBSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-ALBSecurityGroup"
+
+  ECSSecurityGroup:
+    Description: Security Group ID for ECS Tasks
+    Value: !Ref ECSSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-ECSSecurityGroup"

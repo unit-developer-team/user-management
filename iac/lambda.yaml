@@ -1,65 +1,107 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: temporary lambda function
+Description: Lambda function for user management with X-Ray and Secrets Manager access
+
 Parameters:
-    FunctionName:
-        Description: Function Name you want to create.
-        Type: String
-    S3Bucket:
-        Description: location of artifact
-        Type: String
-    DeployPackageName:
-        Description: Zip Package Name you has been uploaded.
-        Type: String
+  FunctionName:
+    Description: Function Name you want to create.
+    Type: String
+  S3Bucket:
+    Description: S3 Bucket name where the zip is located.
+    Type: String
+  DeployPackageName:
+    Description: Name of the zip file (e.g., v1.0.0/package.zip).
+    Type: String
+  AlbDnsNameParam:
+    Description: DNS name of the ALB (from ECS stack output).
+    Type: String
 
 Resources:
-######## Lambda Function
-    LambdaFunction:
-        Type: AWS::Lambda::Function
-        Properties:
-            Description: Lambda Function
-            FunctionName: !Ref FunctionName  #関数名
-            Architectures:
-                - x86_64
-            Handler: handlers/userHandler.handler #最初に実行される関数
-            Code:
-                S3Bucket: !Ref S3Bucket #Lambda の zip を置いた S3 バケット名
-                S3Key: !Ref DeployPackageName #	zip ファイル名
-            MemorySize: 128
-            Role: !GetAtt IAMRole.Arn
-            Runtime: nodejs24.x
-            Timeout: 30
-            TracingConfig: 
-                Mode: PassThrough
-        DependsOn: IAMRole #このリソースより先に、指定したリソースを作る
+  # ============================================================
+  # 1. IAM Managed Policy (Secrets Manager用)
+  # ============================================================
+  # 既存の他スタック（ECSなど）との名前衝突を避けるため、スタック名を付与
+  SecretsManagerReadPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      ManagedPolicyName: !Sub "${AWS::StackName}-secrets-read-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "secretsmanager:GetSecretValue"
+            Resource: "arn:aws:secretsmanager:ap-northeast-1:*:secret:/myapp/prod/config*"
 
-######## Lambda Log Group
-    LogsLogGroup:
-        Type: AWS::Logs::LogGroup
-        Properties:
-            LogGroupName: !Sub "/aws/lambda/${FunctionName}"
-            RetentionInDays: 14
-        DependsOn: LambdaFunction
+  # ============================================================
+  # 2. IAM Role
+  # ============================================================
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      # RoleNameを指定しないことで、スタックの再作成や並行デプロイ時の名前衝突を回避
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        # 基本的な実行権限（CloudWatch Logsへの出力）
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        # X-Rayへの書き込み権限（ご提示いただいたJSONと同等の権限）
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        # 上記で定義したSecrets Managerへのアクセス権限
+        - !Ref SecretsManagerReadPolicy
+      Description: Allows Lambda functions to call CloudWatch Logs, X-Ray and Secrets Manager.
 
-######## IAMRole
-    IAMRole:
-        Type: AWS::IAM::Role
-        Properties:
-            Path: /
-            RoleName: !Sub ${FunctionName}-role
-            AssumeRolePolicyDocument: | #信頼ポリシー: 「誰がこのロールを使っていいか？」を決める
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                        "Effect": "Allow",
-                        "Principal": {
-                            "Service": "lambda.amazonaws.com"
-                        },
-                        "Action": "sts:AssumeRole"
-                        }
-                    ]
-                }
-            MaxSessionDuration: 3600
-            ManagedPolicyArns:  #権限ポリシー:  「このロールを使った Lambda が何をしていいか？」を決める
-              - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-            Description: Allows Lambda functions to call AWS services on your behalf.
+  # ============================================================
+  # 3. CloudWatch Logs
+  # ============================================================
+  # Lambda作成前に作成することで、CloudFormationによるログのライフサイクル管理を可能にする
+  LogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${FunctionName}"
+      RetentionInDays: 14
+
+  # ============================================================
+  # 4. Lambda Function
+  # ============================================================
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LogsLogGroup # ロググループの作成完了を待ってからLambdaを作成
+    Properties:
+      Description: User Management Lambda Function
+      FunctionName: !Ref FunctionName
+      Architectures:
+        - x86_64
+      Handler: handlers/userHandler.handler
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !Ref DeployPackageName
+      MemorySize: 128
+      Role: !GetAtt IAMRole.Arn
+      Runtime: nodejs24.x # Node.jsの安定版を指定
+      Timeout: 30
+      Environment:
+        Variables:
+          ALB_URL: !Sub "http://${AlbDnsNameParam}" # ECSスタックのAlbDnsNameをパラメータで渡す
+          INTERNAL_TOKEN: !Sub "{{resolve:secretsmanager:/myapp/prod/config:SecretString:INTERNAL_TOKEN}}"
+      TracingConfig:
+        # Activeに設定することで、このLambda自体のトレースを詳細に取得します
+        Mode: Active
+
+# ============================================================
+# Outputs
+# ============================================================
+Outputs:
+  LambdaArn:
+    Description: ARN of the Lambda Function
+    Value: !GetAtt LambdaFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaArn"
+
+  LambdaRoleArn:
+    Description: ARN of the IAM Role used by Lambda
+    Value: !GetAtt IAMRole.Arn

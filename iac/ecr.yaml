@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECR Repository Stack
+
+Resources:
+  MyEcrRepository:
+    Type: "AWS::ECR::Repository"
+    Properties:
+      RepositoryName: "user-management-repo"
+      # イメージスキャン（セキュリティ向上）
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      # ライフサイクルポリシー（古いイメージを自動削除してコスト削減）
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 30 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 30
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+Outputs:
+  EcrRepositoryName:
+    Value: !Ref MyEcrRepository
+    Export:
+      Name: "EcrRepoName" # これを他のスタックで呼び出す
