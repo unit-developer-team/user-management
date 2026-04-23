@@ -183,11 +183,11 @@ cp .env.example .env
 
 ### Step 2: フロントエンドの起動
 
-\```bash
+```bash
 cd user-management/frontend
 npm install
 npm run dev    # http://localhost:5173 をブラウザで開く
-\```
+```
 
 フロントエンドが起動したら、実際に画面を操作してバックエンドとの連携を確認します。
 
