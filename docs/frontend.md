@@ -70,7 +70,8 @@ const awsConfig = {
 ```
 
 #### なぜ環境変数で管理するか
-`VITE_USER_POOL_ID` などの値はCognitoのリソースIDです。コードに直接書くとGitHubに公開されてしまうため、環境変数で管理しています。ローカルでは `.env` ファイルから、AWS上ではCodeBuildの環境変数から読み込まれます。
+`VITE_USER_POOL_ID` などの値はCognitoのリソースIDです。コードに直接書くとGitHubに公開されてしまうため、環境変数で管理しています。<br>
+ローカルでは `.env` ファイルから、AWS上ではCodeBuildの環境変数から読み込まれます。
 
 ---
 
@@ -78,7 +79,7 @@ const awsConfig = {
 
 ```typescript
 // main.tsx
-Amplify.configure(awsConfig); // AmplifyにCognitoの設定を渡す
+Amplify.configure(awsConfig); // 1.AmplifyにCognitoの設定を渡す
 
 // App.tsx
 <Authenticator>
@@ -97,11 +98,13 @@ Amplify.configure(awsConfig); // AmplifyにCognitoの設定を渡す
 ```
 
 #### 動く仕組み
-1. `Amplify.configure` でCognitoのユーザープールに接続する設定をAmplifyに渡す
+
+1. Cognitoはプロジェクトごとに複数作れるので、Amplifyに「今回はこのCognitoを使ってね」と教える
 2. `<Authenticator>` コンポーネントがログイン状態を管理する
 3. 未ログインの場合はCognitoのログイン画面を表示する
-4. ログイン成功後はCognitoがJWTトークン（IDトークン）を発行する
-5. トークンはAmplifyが自動でメモリに保持する
+4. ユーザーがID・パスワードを入力すると、AmplifyがCognito（AWSの認証サービス）に送信して検証する
+5. ログイン成功後はCognitoがJWTトークン（IDトークン）を発行する
+6. Amplifyはそのトークンをメモリにキャッシュして、以降のAPI呼び出しで使えるようにする
 
 ---
 
@@ -120,12 +123,32 @@ const getHeaders = async () => {
 };
 ```
 
+### sessionオブジェクトの中身
+
+```
+{
+  tokens: {
+    accessToken: AccessToken, 「何ができるか」の権限情
+    idToken: IdToken,  「誰か」の情報
+    refreshToken: RefreshToken アクセス・IDトークンを更新する
+  },
+  credentials: {
+    accessKeyId: string,
+    secretAccessKey: string,
+    sessionToken: string,
+    expiration: Date
+  },
+  identityId: string,
+  userSub: string
+}
+```
+
 #### 動く仕組み
 1. `fetchAuthSession` でAmplifyが保持しているCognitoのセッションを取得する
 2. セッションからIDトークンを取り出す
-3. `Authorization: Bearer {トークン}` としてAPIリクエストのヘッダーに付与する
-4. API Gateway側でCognito Authorizerがトークンを検証する
-5. 検証OKの場合のみLambdaにリクエストが転送される
+3. HTTPリクエストの Authorization ヘッダーに Bearer {トークン} の形でセットする
+4. リクエストがAPI Gatewayに届くと、Cognito Authorizerがトークンの署名・有効期限を検証する
+5. 検証OKならリクエストをLambda（実際の処理）に転送、NGなら401を返してブロックする
 
 ---
 
@@ -218,13 +241,68 @@ S3バケットはパブリックアクセスを全てブロックしています
 
 ### 6.3 SPAのルーティング設定
 
-ReactはSPA（シングルページアプリケーション）のためブラウザ側でルーティングを処理します。S3に存在しないパスへのアクセスはCloudFrontが `index.html` にリダイレクトする設定にしています。
+ReactはSPA（シングルページアプリケーション）のためブラウザ側でルーティングを処理します。<br>
+S3に存在しないパスへのアクセスはCloudFrontが `index.html` に転送する設定にしています。
 
 | エラーコード | レスポンスページ | 理由 |
 |------|------|------|
 | 403 | /index.html | S3がファイルなしの場合403を返すことがある |
 | 404 | /index.html | 存在しないパスへのアクセスをReactに委ねる |
 
+### 6.4 複数ページに増やしたい場合
+
+フロントエンドの画面を増やしたいときは、react-router-domを使います。
+
+App.tsxを以下のように置き換えて、ページを増やしてください。
+
+```
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+function App() {
+  return (
+    <Authenticator>
+      {({ signOut, user }) => (
+        <AppShell signOut={signOut} username={user?.username}>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/users/:id" element={<UserDetailPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </BrowserRouter>
+        </AppShell>
+      )}
+    </Authenticator>
+  );
+}
+```
+
+この構成ではヘッダーとフッターはそのままに、中身だけがURLに応じて切り替わります。
+
+```
+【一覧画面】 /users
+┌─────────────────────────┐
+│ ヘッダー                  │
+├─────────────────────────┤
+│ USER一覧                 │
+│ ・田中さん  [詳細ボタン]   │
+│ ・鈴木さん  [詳細ボタン]   │
+├─────────────────────────┤
+│ フッター                  │
+└─────────────────────────┘
+          ↓ 田中さんの詳細ボタンを押す
+
+【詳細画面】 /users/123
+┌─────────────────────────┐
+│ ヘッダー（そのまま）       │  ← 再描画なし
+├─────────────────────────┤
+│ 田中さんの詳細            │  ← ここだけ切り替わる
+│ email: tanaka@...        │
+├─────────────────────────┤
+│ フッター（そのまま）       │  ← 再描画なし
+└─────────────────────────┘
+
+```
 ---
 
 ## 7. CI/CDパイプライン
