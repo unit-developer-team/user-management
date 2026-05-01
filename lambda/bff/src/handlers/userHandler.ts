@@ -7,10 +7,12 @@ import { logInfo } from "../utils/logger";
 
 export const handler = async (event: APIGatewayEvent) => {
   // ① 認証情報の取得
-  const userId = event.requestContext.authorizer?.claims?.sub;
+  const userId = event.requestContext.authorizer?.jwt?.claims?.sub ||  // HTTP API
+                 event.requestContext.authorizer?.claims?.sub;          // REST API フォールバック
+                 
   if (!userId) return unauthorized();
 
-  const method = event.httpMethod;
+  const method = (event.requestContext as any)?.http?.method || event.httpMethod;
   logInfo("リクエスト受付", event, { method, path: event.path, userId });
 
   // ② GET と DELETE はバリデーション不要

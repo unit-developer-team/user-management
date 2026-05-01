@@ -1,0 +1,372 @@
+name: Deploy All（初回・インフラ変更時）
+
+# ============================================================
+# 手動実行のみ
+# 初回の環境構築 / iac/以下のインフラ変更時に使用する
+# ============================================================
+on:
+  workflow_dispatch:
+    inputs:
+      env_name:
+        description: デプロイ先の環境
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECR_REPOSITORY_PREFIX: user-management-repo
+  LAMBDA_FUNCTION_PREFIX: user-management
+  FRONTEND_S3_BUCKET_PREFIX: cloudfront-stack-hosting-bucket
+
+jobs:
+  # ============================================================
+  # 環境名をセット（手動入力をそのまま渡す）
+  # ============================================================
+  setup: #JOBの名前
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.set-env.outputs.env_name }}
+    steps:
+      - name: 環境名を設定
+        id: set-env
+        run: echo "env_name=${{ inputs.env_name }}" >> $GITHUB_OUTPUT
+
+  # ============================================================
+  # 1. Network
+  # ============================================================
+  deploy-network:
+    runs-on: ubuntu-latest
+    needs: setup
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4  #どのツール（Action）を使うか
+        with: #パラメーター設定
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CloudFormationスタック更新（Network）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-network
+          template: iac/network.yaml
+          parameter-overrides: "Env=${{ env.ENV }}"
+          no-fail-on-empty-changeset: "1"
+
+  # ============================================================
+  # 2. DynamoDB
+  # ============================================================
+  deploy-dynamodb:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-network]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4 #どのツール（Action）を使うか
+        with:  #パラメーター設定
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CloudFormationスタック更新（DynamoDB）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-dynamodb
+          template: iac/dynamodb.yaml
+          parameter-overrides: "Env=${{ env.ENV }}"
+          no-fail-on-empty-changeset: "1"
+
+  # ============================================================
+  # 3. ECR
+  # ============================================================
+  deploy-ecr:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-network]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CloudFormationスタック更新（ECR）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-ecr
+          template: iac/ecr.yaml
+          parameter-overrides: "Env=${{ env.ENV }}"
+          no-fail-on-empty-changeset: "1"
+
+  # ============================================================
+  # 4. Cognito
+  # ============================================================
+  deploy-cognito:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-network]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CloudFormationスタック更新（Cognito）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-cognito
+          template: iac/cognito.yaml
+          parameter-overrides: "Env=${{ env.ENV }}"
+          no-fail-on-empty-changeset: "1"
+
+  # ============================================================
+  # 5. ECS: Dockerビルド → ECRプッシュ → スタック更新
+  # ============================================================
+  deploy-ecs:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-dynamodb, deploy-ecr]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: ECRにログイン
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Dockerビルド＆ECRにプッシュ
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ env.ENV }}-latest
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/${{ env.ENV }}-${{ env.ECR_REPOSITORY_PREFIX }}:$IMAGE_TAG \
+            ./containers/api
+          docker push \
+            $ECR_REGISTRY/${{ env.ENV }}-${{ env.ECR_REPOSITORY_PREFIX }}:$IMAGE_TAG
+      - name: テスト実行（ECS）
+        working-directory: containers/api
+        run: |
+          npm ci
+          npm test
+
+      - name: CloudFormationスタック更新（ECS）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-ecs
+          template: iac/ecs.yaml
+          parameter-overrides: "Env=${{ env.ENV }}"
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
+      - name: ECSサービスを強制再デプロイ
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ENV }}-user-management-cluster \
+            --service ${{ env.ENV }}-user-management-api-service \
+            --force-new-deployment
+
+  # ============================================================
+  # 6. Lambda: ビルド → S3アップロード → スタック更新
+  # ============================================================
+  deploy-lambda:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-ecs]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: lambda/bff/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: ECSスタックからALB DNSを取得
+        id: ecs-outputs
+        run: |
+          ALB_DNS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-ecs \
+            --query "Stacks[0].Outputs[?OutputKey=='AlbDnsName'].OutputValue" \
+            --output text)
+          echo "alb_dns=${ALB_DNS}" >> $GITHUB_OUTPUT
+      - name: 依存関係インストール
+        working-directory: lambda/bff
+        run: npm ci
+      - name: TypeScriptビルド
+        working-directory: lambda/bff
+        run: npm run build
+      - name: ZIPに圧縮
+        working-directory: lambda/bff/dist
+        run: zip -r ../function.zip .
+      - name: CloudFormationスタック更新（Lambda）- バケット作成
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-lambda
+          template: iac/lambda.yaml
+          parameter-overrides: >-
+            Env=${{ env.ENV }},
+            FunctionName=${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }},
+            DeployPackageName=function.zip,
+            AlbDnsNameParam=${{ steps.ecs-outputs.outputs.alb_dns }}
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
+      - name: LambdaスタックからS3バケット名を取得
+        id: lambda-bucket
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-lambda \
+            --query "Stacks[0].Outputs[?OutputKey=='LambdaDeployBucketName'].OutputValue" \
+            --output text)
+          echo "bucket=${BUCKET}" >> $GITHUB_OUTPUT
+      - name: S3にアップロード
+        working-directory: lambda/bff
+        run: |
+          aws s3 cp function.zip \
+            s3://${{ steps.lambda-bucket.outputs.bucket }}/function.zip
+      - name: CloudFormationスタック更新（Lambda）- 関数コード更新
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-lambda
+          template: iac/lambda.yaml
+          parameter-overrides: >-
+            Env=${{ env.ENV }},
+            FunctionName=${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }},
+            DeployPackageName=function.zip,
+            AlbDnsNameParam=${{ steps.ecs-outputs.outputs.alb_dns }}
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
+
+  # ============================================================
+  # 7. CloudFront（Network完了後すぐ並行実行）
+  # ============================================================
+  deploy-cloudfront:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-network]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CloudFormationスタック更新（CloudFront）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-cloudfront
+          template: iac/cloudfront.yaml
+          parameter-overrides: "Env=${{ env.ENV }}"
+          no-fail-on-empty-changeset: "1"
+
+  # ============================================================
+  # 8. API Gateway
+  # ============================================================
+  deploy-apigw:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-cognito, deploy-lambda]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CloudFormationスタック更新（API Gateway）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-apigw
+          template: iac/apigw.yaml
+          parameter-overrides: >-
+            Env=${{ env.ENV }},
+            LambdaStackName=${{ env.ENV }}-lambda
+          no-fail-on-empty-changeset: "1"
+
+  # ============================================================
+  # フロントエンド: CFn Outputsから環境変数を自動取得してビルド
+  # ============================================================
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-cloudfront, deploy-apigw]
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CFnからフロントエンド用の環境変数を取得
+        id: cfn-outputs
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-apigw \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
+            --output text)
+          USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-cognito \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-cognito \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --output text)
+          echo "api_url=${API_URL}" >> $GITHUB_OUTPUT
+          echo "user_pool_id=${USER_POOL_ID}" >> $GITHUB_OUTPUT
+          echo "user_pool_client_id=${USER_POOL_CLIENT_ID}" >> $GITHUB_OUTPUT
+      - name: 依存関係インストール
+        working-directory: frontend
+        run: npm ci
+      - name: Viteビルド
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ steps.cfn-outputs.outputs.api_url }}
+          VITE_USER_POOL_ID: ${{ steps.cfn-outputs.outputs.user_pool_id }}
+          VITE_USER_POOL_CLIENT_ID: ${{ steps.cfn-outputs.outputs.user_pool_client_id }}
+      - name: S3にアップロード
+        working-directory: frontend
+        run: |
+          aws s3 sync dist/ \
+            s3://${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}/ \
+            --delete
+      - name: CloudFrontキャッシュ削除
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?contains(Origins.Items[0].DomainName, '${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}')].Id" \
+            --output text)
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"

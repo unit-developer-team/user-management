@@ -1,0 +1,115 @@
+name: Deploy Frontend
+
+# ============================================================
+# frontend/ 以下のコード変更時のみ自動実行
+# ============================================================
+on:
+  push:
+    branches:
+      - develop # → dev環境
+      - test    # → test環境
+      - main    # → prod環境
+    paths:
+      - 'frontend/**'
+
+env:
+  AWS_REGION: ap-northeast-1
+  FRONTEND_S3_BUCKET_PREFIX: cloudfront-stack-hosting-bucket
+
+jobs:
+  # ============================================================
+  # デプロイ先の環境を決定
+  # ============================================================
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.set-env.outputs.env_name }}
+    steps:
+      - name: 環境名を設定
+        id: set-env
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "env_name=prod" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_name }}" = "test" ]; then
+            echo "env_name=test" >> $GITHUB_OUTPUT
+          else
+            echo "env_name=dev" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================
+  # フロントエンド: ビルド → S3アップロード → キャッシュ削除
+  # ============================================================
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: setup
+    environment: ${{ needs.setup.outputs.env_name }}
+    env:
+      ENV: ${{ needs.setup.outputs.env_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # CFnのOutputsからVITE_*変数を自動取得（初回デプロイ済み前提）
+      - name: CFnからフロントエンド用の環境変数を取得
+        id: cfn-outputs
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-apigw \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
+            --output text)
+          USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-cognito \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-cognito \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --output text)
+          echo "api_url=${API_URL}" >> $GITHUB_OUTPUT
+          echo "user_pool_id=${USER_POOL_ID}" >> $GITHUB_OUTPUT
+          echo "user_pool_client_id=${USER_POOL_CLIENT_ID}" >> $GITHUB_OUTPUT
+
+      - name: 依存関係インストール
+        working-directory: frontend
+        run: npm ci
+
+      # ★ テストをビルド前に実行
+      - name: テスト実行（Frontend）
+        working-directory: frontend
+        run: npm test
+
+      # テストが通った場合のみビルド・デプロイへ
+      - name: Viteビルド
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ steps.cfn-outputs.outputs.api_url }}
+          VITE_USER_POOL_ID: ${{ steps.cfn-outputs.outputs.user_pool_id }}
+          VITE_USER_POOL_CLIENT_ID: ${{ steps.cfn-outputs.outputs.user_pool_client_id }}
+
+      - name: S3にアップロード
+        working-directory: frontend
+        run: |
+          aws s3 sync dist/ \
+            s3://${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}/ \
+            --delete
+
+      - name: CloudFrontキャッシュ削除
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?contains(Origins.Items[0].DomainName, '${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}')].Id" \
+            --output text)
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"

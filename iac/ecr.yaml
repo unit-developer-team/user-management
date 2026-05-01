@@ -1,15 +1,19 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: ECR Repository Stack
 
+Parameters:
+  Env:
+    Type: String
+    AllowedValues: [dev, test, prod]
+    Description: Environment name
+    
 Resources:
   MyEcrRepository:
     Type: "AWS::ECR::Repository"
     Properties:
-      RepositoryName: "user-management-repo"
-      # イメージスキャン（セキュリティ向上）
+      RepositoryName: !Sub "${Env}-user-management-repo"
       ImageScanningConfiguration:
         ScanOnPush: true
-      # ライフサイクルポリシー（古いイメージを自動削除してコスト削減）
       LifecyclePolicy:
         LifecyclePolicyText: |
           {
@@ -26,9 +30,12 @@ Resources:
               }
             ]
           }
-
+      Tags:
+        - Key: Env
+          Value: !Ref Env
+ 
 Outputs:
   EcrRepositoryName:
     Value: !Ref MyEcrRepository
     Export:
-      Name: "EcrRepoName" # これを他のスタックで呼び出す
+      Name: !Sub "${Env}-EcrRepoName"

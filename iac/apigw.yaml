@@ -1,50 +1,76 @@
 AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  Env:
+    Type: String
+    AllowedValues: [dev, test, prod]
+    Description: Environment name
+  LambdaStackName:
+    Type: String
+    Description: Lambdaスタック名（例：dev-lambda）
+    Default: dev-lambda
+
 Resources:
-  # 1. API Gateway 本体
+  # 1. HTTP API 本体の定義
   MyHttpApi:
     Type: "AWS::ApiGatewayV2::Api"
     Properties:
-      Name: "user-api-with-auth"
+      Name: !Sub "${Env}-user-api-with-auth"
       ProtocolType: "HTTP"
+      # ブラウザからのクロスドメインアクセスを許可する設定
       CorsConfiguration:
         AllowCredentials: false
         AllowHeaders: ["Content-Type", "Authorization"]
         AllowMethods: ["GET", "POST", "DELETE", "OPTIONS"]
         AllowOrigins: ["*"]
+      Tags:
+        Env: !Ref Env
 
-  # 2. オーソライザー（認証の設定）
+  # 2. 【重要】Cognitoを利用したJWTオーソライザーの設定
+  # APIへのリクエストに含まれるIDトークンの妥当性を検証します
   MyApiAuthorizer:
     Type: "AWS::ApiGatewayV2::Authorizer"
     Properties:
       ApiId: !Ref MyHttpApi
       Name: "CognitoAuthorizer"
-      AuthorizerType: "JWT" #JSON Web Token
-      IdentitySource: ["$request.header.Authorization"] #合言葉（トークン）はリクエストのどこに入っているか ヘッダーの Authorization 項目
+      AuthorizerType: "JWT"
+      IdentitySource: ["$request.header.Authorization"] # トークンをどこから探すか（通常はHeader）
       JwtConfiguration:
-        Audience: [!ImportValue "Cognito-UserPoolClientId"]
-        Issuer: !Sub 
-          - "https://cognito-idp.${AWS::Region}.amazonaws.com/${PoolIdVar}" #信頼できるCognitoのURL（発行元）を指定
-          - PoolIdVar: !ImportValue "Cognito-UserPoolId"
+        # 他のスタックでExportされたCognitoのクライアントIDを動的に取り込む
+        Audience:
+          - !ImportValue 
+            Fn::Sub: "${Env}-Cognito-UserPoolClientId"
+        # Issuer（発行元）: CognitoユーザープールのエンドポイントURLを組み立て
+        Issuer: !Sub
+          - "https://cognito-idp.${AWS::Region}.amazonaws.com/${PoolIdVar}"
+          - PoolIdVar: !ImportValue 
+              Fn::Sub: "${Env}-Cognito-UserPoolId"
 
-  # Lambda呼び出し許可: API GatewayがLambdaを実行できるようにする
+  # 3. 【重要】Lambdaの実行権限
+  # API GatewayがLambda関数を呼び出すことを許可する「リソースベースポリシー」
   LambdaInvokePermission:
     Type: "AWS::Lambda::Permission"
     Properties:
-      FunctionName: !ImportValue "MyProject-LambdaArn"
+      # 他のスタックからLambdaのARNを取得
+      FunctionName: !ImportValue
+        Fn::Sub: "${Env}-${LambdaStackName}-LambdaArn"
       Action: "lambda:InvokeFunction"
       Principal: "apigateway.amazonaws.com"
+      # 最小特権の原則：このAPI Gatewayスタックからの呼び出しのみを許可
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyHttpApi}/*/*"
 
-  # 3. 統合設定 (Lambdaとの紐付け)
+  # 4. APIと後続処理（Lambda）の紐付け設定
   MyIntegration:
     Type: "AWS::ApiGatewayV2::Integration"
     Properties:
       ApiId: !Ref MyHttpApi
-      IntegrationType: "AWS_PROXY"
-      IntegrationUri: !ImportValue "MyProject-LambdaArn"
-      PayloadFormatVersion: "2.0"
+      IntegrationType: "AWS_PROXY" # リクエスト内容をそのままLambdaに渡す方式
+      IntegrationUri: !ImportValue
+        Fn::Sub: "${Env}-${LambdaStackName}-LambdaArn"
+      PayloadFormatVersion: "2.0" # HTTP API推奨の最新フォーマット
 
-  # 4. ルート設定（認証あり）
+  # 5. 各ルート（パス）の定義
+  # 全てのルートに「AuthorizationType: JWT」を指定し、認証を必須にしています
   GetUsersRoute:
     Type: "AWS::ApiGatewayV2::Route"
     Properties:
@@ -81,10 +107,20 @@ Resources:
       AuthorizationType: "JWT"
       AuthorizerId: !Ref MyApiAuthorizer
 
-  # 5. ステージ
+  # 6. ステージの設定
+  # $defaultステージを使うことで、URLの末尾にステージ名を含めずにアクセス可能
   MyStage:
     Type: "AWS::ApiGatewayV2::Stage"
     Properties:
       ApiId: !Ref MyHttpApi
       StageName: "$default"
-      AutoDeploy: true
+      AutoDeploy: true # 変更時に即時反映
+      Tags:
+        Env: !Ref Env
+
+Outputs:
+  # 作成されたAPIのベースURLを出力（フロントエンド等で利用）
+  ApiEndpoint:
+    Value: !Sub "https://${MyHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: !Sub "${Env}-APIGW-Endpoint"

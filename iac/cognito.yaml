@@ -1,22 +1,22 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: "Cognito User Pool with MFA and SES Integration"
 
+Parameters:
+  Env:
+    Type: String
+    AllowedValues: [dev, test, prod]
+    Description: Environment name
+
 Resources:
-  # 1. ユーザープールの定義
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Sub "${AWS::StackName}-UserPool"
+      UserPoolName: !Sub "${Env}-UserPool"
       UsernameAttributes:
         - email
       AutoVerifiedAttributes:
         - email
-      # MFA設定: 認証アプリ(TOTP)を必須にする設定
       MfaConfiguration: 'OFF'
-      EnabledMfas:
-        - SOFTWARE_TOKEN_MFA
-      
-      # パスワードポリシー
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -25,43 +25,34 @@ Resources:
           RequireNumbers: true
           RequireSymbols: true
           TemporaryPasswordValidityDays: 7
-
-      # 管理者による作成のみ許可（自己サインアップ禁止）
       AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true
-
-      # SESを利用したメール送信設定
-      EmailConfiguration:
-        EmailSendingAccount: DEVELOPER
-        From: "no-reply@example.com"
-        SourceArn: !Sub "arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/example.com"
-
-      # スキーマ（標準属性）の明示的な設定
+        AllowAdminCreateUserOnly: false
       Schema:
         - Name: email
           AttributeDataType: String
           Required: true
           Mutable: true
-
-  # 2. アプリケーションクライアント (アプリから接続するために必要)
+      UserPoolTags:
+        Env: !Ref Env
+ 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
-      ClientName: !Sub "${AWS::StackName}-AppClient"
+      ClientName: !Sub "${Env}-AppClient"
       UserPoolId: !Ref UserPool
-      GenerateSecret: false # フロントエンド(SPA/App)から呼ぶ場合はfalse
+      GenerateSecret: false
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
-        - ALLOW_USER_PASSWORD_AUTH # 管理者操作などで必要なら
-
+        - ALLOW_USER_PASSWORD_AUTH
+ 
 Outputs:
   UserPoolId:
     Value: !Ref UserPool
     Export:
-      Name: !Sub "${AWS::StackName}-UserPoolId"
-
+      Name: !Sub "${Env}-Cognito-UserPoolId"
+ 
   UserPoolClientId:
     Value: !Ref UserPoolClient
     Export:
-      Name: !Sub "${AWS::StackName}-UserPoolClientId"
+      Name: !Sub "${Env}-Cognito-UserPoolClientId"

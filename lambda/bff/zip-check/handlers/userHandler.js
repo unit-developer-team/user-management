@@ -9,7 +9,7 @@ const handler = async (event) => {
     const userId = event.requestContext.authorizer?.claims?.sub;
     if (!userId)
         return (0, response_1.unauthorized)();
-    const method = event.httpMethod;
+    const method = event.requestContext?.http?.method || event.httpMethod;
     // ② GET と DELETE はバリデーション不要
     if (method === "GET" || method === "DELETE") {
         return await (0, apiForwarder_1.forwardToApi)(event);

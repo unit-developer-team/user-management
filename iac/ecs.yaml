@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: ECS Fargate Task and ALB Infrastructure
 
+Parameters:
+  Env:
+    Type: String
+    AllowedValues: [dev, test, prod]
+    Description: Environment name
+
 Resources:
   # ============================================================
   # 1. ECS Cluster
@@ -8,53 +14,62 @@ Resources:
   TestEcsCluster:
     Type: "AWS::ECS::Cluster"
     Properties:
-      ClusterName: "user-management-cluster"
+      ClusterName: !Sub "${Env}-user-management-cluster"
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
   # ============================================================
-  # 2. CloudWatch Logs (コンテナのログ出力先)
+  # 2. CloudWatch Logs
   # ============================================================
   EcsLogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
-      LogGroupName: "/ecs/user-management-api-task"
+      LogGroupName: !Sub "/ecs/${Env}-user-management-api-task"
       RetentionInDays: 14
 
   # ============================================================
-  # 3. Application Load Balancer (ALB) 関連
+  # 3. ALB関連
   # ============================================================
-
-  # ターゲットグループ: ALBからECSタスクへ通信を振り分ける設定
   TestTargetGroup:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties:
-      VpcId: !ImportValue "Network-Stack-VpcId" # ネットワークスタックからVPC IDを取得
-      Name: "test-target-group"
+      VpcId: !ImportValue
+        Fn::Sub: "${Env}-Network-VpcId"
+      Name: !Sub "${Env}-target-group"
       Protocol: HTTP
       Port: 3000
-      TargetType: ip # Fargateの場合は必ず 'ip' を指定
-      HealthCheckPath: "/" # アプリのヘルスチェック用パス（アプリに合わせて変更）
+      TargetType: ip
+      HealthCheckPath: "/"
       Matcher:
         HttpCode: "200"
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
-  # ALB本体: インターネットからの入り口
   TestInternetAlb:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties:
-      Name: "user-management-alb"
-      Scheme: "internet-facing" # 外部公開用
+      Name: !Sub "${Env}-user-management-alb"
+      Scheme: "internet-facing"
       Type: "application"
       SecurityGroups:
-        - !ImportValue "Network-Stack-ALBSecurityGroup" # ネットワークスタックからSGを取得
+        - !ImportValue
+          Fn::Sub: "${Env}-Network-ALBSecurityGroup"
       Subnets:
-        - !ImportValue "Network-Stack-PublicSubnet1" # ネットワークスタックからパブリックサブネット1を取得
-        - !ImportValue "Network-Stack-PublicSubnet2" # ネットワークスタックからパブリックサブネット2を取得
+        - !ImportValue
+          Fn::Sub: "${Env}-Network-PublicSubnet1"
+        - !ImportValue
+          Fn::Sub: "${Env}-Network-PublicSubnet2"
       LoadBalancerAttributes:
         - Key: "deletion_protection.enabled"
           Value: false
         - Key: "idle_timeout.timeout_seconds"
           Value: 60
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
-  # ALBリスナー: 80番ポートで受け取った通信をターゲットグループへ流す
   TestAlbListener:
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
@@ -66,26 +81,23 @@ Resources:
           TargetGroupArn: !Ref TestTargetGroup
 
   # ============================================================
-  # 4. IAM Roles (権限管理)
+  # 4. IAM Roles
   # ============================================================
-
-  # Secrets Manager読み取り用ポリシー
   SecretsManagerReadPolicy:
     Type: "AWS::IAM::ManagedPolicy"
     Properties:
-      ManagedPolicyName: "test-secretsmanager-read-policy"
+      ManagedPolicyName: !Sub "${Env}-ecs-secretsmanager-read-policy"
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Action: "secretsmanager:GetSecretValue"
-            Resource: "arn:aws:secretsmanager:ap-northeast-1:*:secret:/myapp/prod/config*"
+            Resource: !Sub "arn:aws:secretsmanager:ap-northeast-1:*:secret:/myapp/prod/config*"
 
-  # ECSタスク実行ロール: ECSエージェントがイメージ取得やログ出力を行うための権限
   UserEcsTaskExecRole:
     Type: "AWS::IAM::Role"
     Properties:
-      RoleName: "test-ecs-task-exec-role"
+      RoleName: !Sub "${Env}-ecs-task-exec-role"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -97,12 +109,14 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - !Ref SecretsManagerReadPolicy
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
-  # ECSタスクロール: コンテナ内のアプリケーションがAWSサービス(DynamoDB等)を操作する権限
   UserEcsTaskRole:
     Type: "AWS::IAM::Role"
     Properties:
-      RoleName: "user-management-ecs-task-role"
+      RoleName: !Sub "${Env}-ecs-task-role"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -121,17 +135,19 @@ Resources:
                   - dynamodb:PutItem
                   - dynamodb:DeleteItem
                   - dynamodb:Scan
-                Resource: !ImportValue "UsersTableArn" # DynamoDBスタックがある前提
+                Resource: !ImportValue
+                  Fn::Sub: "${Env}-UsersTableArn"
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
   # ============================================================
   # 5. ECS Task Definition & Service
   # ============================================================
-
-  # タスク定義: コンテナのスペックやイメージを指定
   TestEcsTaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     Properties:
-      Family: "user-management-api-task"
+      Family: !Sub "${Env}-user-management-api-task"
       Cpu: 256
       Memory: 512
       NetworkMode: awsvpc
@@ -140,10 +156,11 @@ Resources:
       ExecutionRoleArn: !Ref UserEcsTaskExecRole
       TaskRoleArn: !Ref UserEcsTaskRole
       ContainerDefinitions:
-        - Name: "user-management-api"
-          Image: !Sub 
-            - "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${RepoName}:latest"
-            - RepoName: !ImportValue "EcrRepoName"
+        - Name: !Sub "${Env}-user-management-api"
+          Image: !Sub
+            - "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${RepoName}:${Env}-latest"
+            - RepoName: !ImportValue
+                Fn::Sub: "${Env}-EcrRepoName"
           PortMappings:
             - ContainerPort: 3000
               Protocol: tcp
@@ -154,44 +171,53 @@ Resources:
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: "ecs"
           Environment:
+            - Name: ENV
+              Value: !Ref Env
             - Name: TABLE_NAME
-              Value: !ImportValue "UsersTableName"
+              Value: !ImportValue
+                Fn::Sub: "${Env}-UsersTableName"
             - Name: INTERNAL_TOKEN
-              Value: "{{resolve:secretsmanager:/myapp/prod/config:SecretString:INTERNAL_TOKEN}}"
+              Value: !Sub "{{resolve:secretsmanager:/myapp/prod/config:SecretString:INTERNAL_TOKEN}}"
             - Name: PORT
               Value: "3000"
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
-  # ECSサービス: タスクを維持・ALBと紐付け
   TestEcsService:
     Type: "AWS::ECS::Service"
-    DependsOn: TestAlbListener # リスナーができてからサービスを開始
+    DependsOn: TestAlbListener
     Properties:
-      ServiceName: "user-management-api-service"
+      ServiceName: !Sub "${Env}-user-management-api-service"
       Cluster: !Ref TestEcsCluster
       TaskDefinition: !Ref TestEcsTaskDefinition
       DesiredCount: 1
       LaunchType: FARGATE
       LoadBalancers:
-        - ContainerName: "user-management-api"
+        - ContainerName: !Sub "${Env}-user-management-api"
           ContainerPort: 3000
           TargetGroupArn: !Ref TestTargetGroup
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: DISABLED # プライベートサブネットなのでDISABLED
+          AssignPublicIp: DISABLED
           SecurityGroups:
-            - !ImportValue "Network-Stack-ECSSecurityGroup"
+            - !ImportValue
+              Fn::Sub: "${Env}-Network-ECSSecurityGroup"
           Subnets:
-            - !ImportValue "Network-Stack-PrivateSubnet"
+            - !ImportValue
+              Fn::Sub: "${Env}-Network-PrivateSubnet"
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
-# ============================================================
-# Outputs
-# ============================================================
 Outputs:
-  TestEcsClusterName:
+  ClusterName:
     Value: !Ref TestEcsCluster
     Export:
-      Name: !Sub "${AWS::StackName}-ClusterName"
+      Name: !Sub "${Env}-ECS-ClusterName"
 
   AlbDnsName:
     Description: URL to access the application
     Value: !GetAtt TestInternetAlb.DNSName
+    Export:
+      Name: !Sub "${Env}-ECS-AlbDnsName"

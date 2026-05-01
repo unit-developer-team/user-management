@@ -7,10 +7,11 @@ const validate_1 = require("../utils/validate");
 const logger_1 = require("../utils/logger");
 const handler = async (event) => {
     // ① 認証情報の取得
-    const userId = event.requestContext.authorizer?.claims?.sub;
+    const userId = event.requestContext.authorizer?.jwt?.claims?.sub || // HTTP API
+        event.requestContext.authorizer?.claims?.sub; // REST API フォールバック
     if (!userId)
         return (0, response_1.unauthorized)();
-    const method = event.httpMethod;
+    const method = event.requestContext?.http?.method || event.httpMethod;
     (0, logger_1.logInfo)("リクエスト受付", event, { method, path: event.path, userId });
     // ② GET と DELETE はバリデーション不要
     if (method === "GET" || method === "DELETE") {

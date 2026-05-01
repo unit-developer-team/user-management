@@ -1,5 +1,12 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: "DynamoDB"
+ 
+Parameters:
+  Env:
+    Type: String
+    AllowedValues: [dev, test, prod]
+    Description: Environment name
+ 
 
 Resources:
   User:
@@ -7,22 +14,25 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: !Sub "${AWS::StackName}-UsersTable"
-      BillingMode: PAY_PER_REQUEST #オンデマンドモードで起動
-      AttributeDefinitions: #主キーや GSI のキーに使う属性の “名前と型” を事前に登録するための設定
+      TableName: !Sub "${Env}-UsersTable"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
         - AttributeName: "id"
           AttributeType: "S"
-      KeySchema: # テーブルや GSI の “キーの役割” を決める設定
+      KeySchema:
         - AttributeName: "id"
-          KeyType: "HASH" #IDをパーティションキーに
+          KeyType: "HASH"
+      Tags:
+        - Key: Env
+          Value: !Ref Env
 
-Outputs: #テーブル名とARNを外部公開
+Outputs:
   UsersTableName:
     Value: !Ref User
     Export:
-      Name: UsersTableName
-
+      Name: !Sub "${Env}-UsersTableName"
+ 
   UsersTableArn:
     Value: !GetAtt User.Arn
     Export:
-      Name: UsersTableArn
+      Name: !Sub "${Env}-UsersTableArn"

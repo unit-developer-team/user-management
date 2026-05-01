@@ -4,41 +4,51 @@ exports.forwardToApi = void 0;
 const client_secrets_manager_1 = require("@aws-sdk/client-secrets-manager");
 const logger_1 = require("../utils/logger");
 const sm = new client_secrets_manager_1.SecretsManagerClient({ region: "ap-northeast-1" });
-const shape = (data) => data;
 // コールドスタート時のみ取得
-let cachedConfig = null;
-const getConfig = async () => {
-    if (cachedConfig)
-        return cachedConfig;
+let cachedToken = null;
+// INTERNAL_TOKEN だけ Secrets Manager から取得
+const getInternalToken = async () => {
+    if (cachedToken)
+        return cachedToken;
     const res = await sm.send(new client_secrets_manager_1.GetSecretValueCommand({ SecretId: "/myapp/prod/config" }));
     const secret = JSON.parse(res.SecretString ?? "{}");
-    if (!secret.ALB_URL || !secret.INTERNAL_TOKEN) {
-        throw new Error("シークレットに必要な値が設定されていません");
+    if (!secret.INTERNAL_TOKEN) {
+        throw new Error("シークレットに INTERNAL_TOKEN がありません");
     }
-    cachedConfig = {
-        albUrl: secret.ALB_URL,
-        internalToken: secret.INTERNAL_TOKEN,
-    };
-    return cachedConfig;
+    cachedToken = secret.INTERNAL_TOKEN;
+    if (!cachedToken) {
+        throw new Error("Token が取得されていません");
+    }
+    return cachedToken;
 };
 const forwardToApi = async (event) => {
-    const { albUrl, internalToken } = await getConfig();
-    const path = event.path ?? "/users";
+    // ALB_URL は環境変数から取得
+    const albUrl = process.env.ALB_URL;
+    if (!albUrl) {
+        throw new Error("ALB_URL 環境変数が設定されていません");
+    }
+    // INTERNAL_TOKEN は Secrets Manager から取得
+    const internalToken = await getInternalToken();
+    const path = event.rawPath ?? event.path ?? "/users";
     const url = `${albUrl}${path}`;
+    // HTTP APIとREST API両対応
+    const method = event.requestContext?.http?.method || event.httpMethod;
     try {
         (0, logger_1.logInfo)("ECSへの転送 開始", event, { method: event.httpMethod, path: url });
         const res = await fetch(url, {
-            method: event.httpMethod,
+            method: method,
             headers: {
                 "Content-Type": "application/json",
                 "X-Internal-Token": internalToken,
             },
-            // GET と DELETE は body を送らない
             body: event.body ? event.body : undefined,
         });
         if (!res.ok) {
             const resText = await res.text();
-            (0, logger_1.logError)("APIコンテナへの転送失敗", new Error(resText), event, { status: res.status, path: url });
+            (0, logger_1.logError)("APIコンテナへの転送失敗", new Error(resText), event, {
+                status: res.status,
+                path: url,
+            });
             return {
                 statusCode: res.status,
                 body: JSON.stringify({ message: "Bad Gateway" }),
@@ -53,7 +63,7 @@ const forwardToApi = async (event) => {
                 "Access-Control-Allow-Headers": "Content-Type,Authorization",
                 "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
             },
-            body: JSON.stringify(shape(data)),
+            body: JSON.stringify(data),
         };
     }
     catch (err) {

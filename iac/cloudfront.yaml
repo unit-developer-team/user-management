@@ -1,20 +1,26 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Frontend Stack: CloudFront + S3 with OAC'
 
+Parameters:
+  Env:
+    Type: String
+    AllowedValues: [dev, test, prod]
+    Description: Environment name
+
 Resources:
-  # 1. 静的ファイル公開用のS3バケット
   WebsiteBucket:
     Type: "AWS::S3::Bucket"
     Properties:
       BucketName: !Sub "${AWS::StackName}-hosting-bucket"
-      # セキュリティのため公開アクセスはすべてブロック
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-
-  # 2. CloudFrontからS3へのアクセスを許可する「鍵」 (OAC)
+      Tags:
+        - Key: Env
+          Value: !Ref Env
+ 
   OriginAccessControl:
     Type: "AWS::CloudFront::OriginAccessControl"
     Properties:
@@ -23,8 +29,7 @@ Resources:
         OriginAccessControlOriginType: "s3"
         SigningBehavior: "always"
         SigningProtocol: "sigv4"
-
-  # 3. CloudFront ディストリビューション
+ 
   CloudFrontDistribution:
     Type: "AWS::CloudFront::Distribution"
     Properties:
@@ -40,17 +45,16 @@ Resources:
         DefaultCacheBehavior:
           TargetOriginId: "S3Origin"
           ViewerProtocolPolicy: "redirect-to-https"
-          # SPA（React等）の場合、APIのオリジンを分けるならここを調整
           ForwardedValues:
             QueryString: false
-        # SPA用：404エラーをindex.htmlに飛ばす設定
         CustomErrorResponses:
           - ErrorCode: 404
             ResponseCode: 200
             ResponsePagePath: "/index.html"
-
-  # 4. S3バケットポリシー
-  # 「このCloudFrontからしかファイルを見せない」設定
+      Tags:
+        - Key: Env
+          Value: !Ref Env
+ 
   WebsiteBucketPolicy:
     Type: "AWS::S3::BucketPolicy"
     Properties:
@@ -65,8 +69,10 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
-
+ 
 Outputs:
   DistributionDomainName:
     Value: !GetAtt CloudFrontDistribution.DomainName
     Description: "CloudFront URL"
+    Export:
+      Name: !Sub "${Env}-CloudFront-DomainName"

@@ -7,11 +7,15 @@ const forwardToApi = async (event) => {
     const internalToken = process.env.INTERNAL_TOKEN;
     if (!albUrl || !internalToken)
         throw new Error("環境変数が設定されていません");
-    const path = event.path ?? "/users";
+    const path = event.rawPath ?? event.path ?? "/users";
     const url = `${albUrl}${path}`;
+
+     // HTTP APIとREST API両対応
+    const method = event.requestContext?.http?.method || event.httpMethod;
+
     try {
         const res = await fetch(url, {
-            method: event.httpMethod,
+            method: method,
             headers: {
                 "Content-Type": "application/json",
                 "X-Internal-Token": internalToken,
