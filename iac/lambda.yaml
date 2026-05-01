@@ -9,35 +9,11 @@ Parameters:
   FunctionName:
     Description: Function Name you want to create.
     Type: String
-  DeployPackageName:
-    Description: Name of the zip file (e.g., v1.0.0/package.zip).
-    Type: String
   AlbDnsNameParam:
     Description: DNS name of the ALB (from ECS stack output).
     Type: String
 
 Resources:
-  # ============================================================
-  # S3: Lambdaデプロイ用バケット（CFnで管理）
-  # ============================================================
-  LambdaDeployBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "${Env}-${AWS::StackName}-deploy-bucket"
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      LifecycleConfiguration:
-        Rules:
-          - Id: DeleteOldZips
-            Status: Enabled
-            ExpirationInDays: 30  # 古いZIPを自動削除
-      Tags:
-        - Key: Env
-          Value: !Ref Env
-
   # ============================================================
   # IAM
   # ============================================================
@@ -82,6 +58,7 @@ Resources:
 
   # ============================================================
   # Lambda Function
+  # 初回はダミーコードで作成し、その後 update-function-code で本物を流し込む
   # ============================================================
   LambdaFunction:
     Type: AWS::Lambda::Function
@@ -91,13 +68,16 @@ Resources:
       FunctionName: !Ref FunctionName
       Architectures:
         - x86_64
-      Handler: handlers/userHandler.handler
+      Handler: index.handler
       Code:
-        S3Bucket: !Ref LambdaDeployBucket  # CFn管理のバケットを参照
-        S3Key: !Ref DeployPackageName
+        ZipFile: |
+          exports.handler = async () => ({
+            statusCode: 200,
+            body: 'initializing'
+          });
       MemorySize: 128
       Role: !GetAtt IAMRole.Arn
-      Runtime: nodejs24.x
+      Runtime: nodejs20.x
       Timeout: 30
       Environment:
         Variables:
@@ -120,9 +100,3 @@ Outputs:
   LambdaRoleArn:
     Description: ARN of the IAM Role used by Lambda
     Value: !GetAtt IAMRole.Arn
-
-  LambdaDeployBucketName:
-    Description: S3 Bucket name for Lambda deploy packages
-    Value: !Ref LambdaDeployBucket
-    Export:
-      Name: !Sub "${Env}-${AWS::StackName}-DeployBucketName"

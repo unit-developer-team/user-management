@@ -40,7 +40,7 @@ Resources:
       Protocol: HTTP
       Port: 3000
       TargetType: ip
-      HealthCheckPath: "/"
+      HealthCheckPath: "/health"
       Matcher:
         HttpCode: "200"
       Tags:

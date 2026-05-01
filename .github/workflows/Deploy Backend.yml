@@ -1,7 +1,7 @@
 name: Deploy Backend（Lambda / ECS）
 
 # ============================================================
-# lambda/ or ecs/ 以下のコード変更時のみ自動実行
+# lambda/ or containers/api/ 以下のコード変更時のみ自動実行
 # ============================================================
 on:
   push:
@@ -39,7 +39,7 @@ jobs:
           fi
 
   # ============================================================
-  # ECS: Dockerビルド → ECRプッシュ → サービス再デプロイ
+  # ECS: テスト → Dockerビルド → ECRプッシュ → サービス再デプロイ
   # ============================================================
   deploy-ecs:
     runs-on: ubuntu-latest
@@ -49,7 +49,9 @@ jobs:
       ENV: ${{ needs.setup.outputs.env_name }}
     steps:
       - uses: actions/checkout@v4
-
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -85,7 +87,7 @@ jobs:
             --force-new-deployment
 
   # ============================================================
-  # Lambda: ビルド → S3アップロード → 関数コード更新
+  # Lambda: テスト → ビルド → 直接アップロード
   # ============================================================
   deploy-lambda:
     runs-on: ubuntu-latest
@@ -95,13 +97,11 @@ jobs:
       ENV: ${{ needs.setup.outputs.env_name }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: lambda/bff/package-lock.json
-
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -112,6 +112,10 @@ jobs:
         working-directory: lambda/bff
         run: npm ci
 
+      - name: テスト実行（Lambda）
+        working-directory: lambda/bff
+        run: npm test
+
       - name: TypeScriptビルド
         working-directory: lambda/bff
         run: npm run build
@@ -120,26 +124,10 @@ jobs:
         working-directory: lambda/bff/dist
         run: zip -r ../function.zip .
 
-      # CFn管理のS3バケット名を取得（初回デプロイ済み前提）
-      - name: LambdaスタックからS3バケット名を取得
-        id: lambda-bucket
-        run: |
-          BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.ENV }}-lambda \
-            --query "Stacks[0].Outputs[?OutputKey=='LambdaDeployBucketName'].OutputValue" \
-            --output text)
-          echo "bucket=${BUCKET}" >> $GITHUB_OUTPUT
-
-      - name: S3にアップロード
+      # S3を経由せず直接Lambda関数のコードを更新
+      - name: Lambdaに直接デプロイ
         working-directory: lambda/bff
-        run: |
-          aws s3 cp function.zip \
-            s3://${{ steps.lambda-bucket.outputs.bucket }}/function.zip
-
-      # ZIPを更新してLambda関数のコードを反映
-      - name: Lambda関数のコードを更新
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }} \
-            --s3-bucket ${{ steps.lambda-bucket.outputs.bucket }} \
-            --s3-key function.zip
+            --zip-file fileb://function.zip

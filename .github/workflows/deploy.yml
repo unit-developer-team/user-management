@@ -26,7 +26,7 @@ jobs:
   # ============================================================
   # 環境名をセット（手動入力をそのまま渡す）
   # ============================================================
-  setup: #JOBの名前
+  setup:
     runs-on: ubuntu-latest
     outputs:
       env_name: ${{ steps.set-env.outputs.env_name }}
@@ -46,8 +46,8 @@ jobs:
       ENV: ${{ needs.setup.outputs.env_name }}
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4  #どのツール（Action）を使うか
-        with: #パラメーター設定
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
@@ -70,8 +70,8 @@ jobs:
       ENV: ${{ needs.setup.outputs.env_name }}
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4 #どのツール（Action）を使うか
-        with:  #パラメーター設定
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
@@ -132,7 +132,7 @@ jobs:
           no-fail-on-empty-changeset: "1"
 
   # ============================================================
-  # 5. ECS: Dockerビルド → ECRプッシュ → スタック更新
+  # 5. ECS: テスト → Dockerビルド → ECRプッシュ → スタック更新
   # ============================================================
   deploy-ecs:
     runs-on: ubuntu-latest
@@ -142,14 +142,25 @@ jobs:
       ENV: ${{ needs.setup.outputs.env_name }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: テスト実行（ECS）
+        working-directory: containers/api
+        run: |
+          npm ci
+          npm test
+
       - name: ECRにログイン
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
       - name: Dockerビルド＆ECRにプッシュ
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -160,11 +171,6 @@ jobs:
             ./containers/api
           docker push \
             $ECR_REGISTRY/${{ env.ENV }}-${{ env.ECR_REPOSITORY_PREFIX }}:$IMAGE_TAG
-      - name: テスト実行（ECS）
-        working-directory: containers/api
-        run: |
-          npm ci
-          npm test
 
       - name: CloudFormationスタック更新（ECS）
         uses: aws-actions/aws-cloudformation-github-deploy@v1
@@ -174,6 +180,7 @@ jobs:
           parameter-overrides: "Env=${{ env.ENV }}"
           capabilities: CAPABILITY_NAMED_IAM
           no-fail-on-empty-changeset: "1"
+
       - name: ECSサービスを強制再デプロイ
         run: |
           aws ecs update-service \
@@ -182,7 +189,7 @@ jobs:
             --force-new-deployment
 
   # ============================================================
-  # 6. Lambda: ビルド → S3アップロード → スタック更新
+  # 6. Lambda: CFnでダミー作成 → ビルド → 直接アップロード
   # ============================================================
   deploy-lambda:
     runs-on: ubuntu-latest
@@ -202,6 +209,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
       - name: ECSスタックからALB DNSを取得
         id: ecs-outputs
         run: |
@@ -210,52 +218,40 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='AlbDnsName'].OutputValue" \
             --output text)
           echo "alb_dns=${ALB_DNS}" >> $GITHUB_OUTPUT
+
+      # 1. CFnでダミーコードのLambda関数を作成（初回のみ実質的な作成）
+      - name: CloudFormationスタック更新（Lambda）
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ env.ENV }}-lambda
+          template: iac/lambda.yaml
+          parameter-overrides: >-
+            Env=${{ env.ENV }},
+            FunctionName=${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }},
+            AlbDnsNameParam=${{ steps.ecs-outputs.outputs.alb_dns }}
+          capabilities: CAPABILITY_NAMED_IAM
+          no-fail-on-empty-changeset: "1"
+
+      # 2. 本物のコードをビルドしてZIP化
       - name: 依存関係インストール
         working-directory: lambda/bff
         run: npm ci
+
       - name: TypeScriptビルド
         working-directory: lambda/bff
         run: npm run build
+
       - name: ZIPに圧縮
         working-directory: lambda/bff/dist
         run: zip -r ../function.zip .
-      - name: CloudFormationスタック更新（Lambda）- バケット作成
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
-        with:
-          name: ${{ env.ENV }}-lambda
-          template: iac/lambda.yaml
-          parameter-overrides: >-
-            Env=${{ env.ENV }},
-            FunctionName=${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }},
-            DeployPackageName=function.zip,
-            AlbDnsNameParam=${{ steps.ecs-outputs.outputs.alb_dns }}
-          capabilities: CAPABILITY_NAMED_IAM
-          no-fail-on-empty-changeset: "1"
-      - name: LambdaスタックからS3バケット名を取得
-        id: lambda-bucket
-        run: |
-          BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name ${{ env.ENV }}-lambda \
-            --query "Stacks[0].Outputs[?OutputKey=='LambdaDeployBucketName'].OutputValue" \
-            --output text)
-          echo "bucket=${BUCKET}" >> $GITHUB_OUTPUT
-      - name: S3にアップロード
+
+      # 3. S3を経由せず直接Lambda関数のコードを更新
+      - name: Lambdaに直接デプロイ
         working-directory: lambda/bff
         run: |
-          aws s3 cp function.zip \
-            s3://${{ steps.lambda-bucket.outputs.bucket }}/function.zip
-      - name: CloudFormationスタック更新（Lambda）- 関数コード更新
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
-        with:
-          name: ${{ env.ENV }}-lambda
-          template: iac/lambda.yaml
-          parameter-overrides: >-
-            Env=${{ env.ENV }},
-            FunctionName=${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }},
-            DeployPackageName=function.zip,
-            AlbDnsNameParam=${{ steps.ecs-outputs.outputs.alb_dns }}
-          capabilities: CAPABILITY_NAMED_IAM
-          no-fail-on-empty-changeset: "1"
+          aws lambda update-function-code \
+            --function-name ${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }} \
+            --zip-file fileb://function.zip
 
   # ============================================================
   # 7. CloudFront（Network完了後すぐ並行実行）
@@ -328,6 +324,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
       - name: CFnからフロントエンド用の環境変数を取得
         id: cfn-outputs
         run: |
@@ -346,9 +343,15 @@ jobs:
           echo "api_url=${API_URL}" >> $GITHUB_OUTPUT
           echo "user_pool_id=${USER_POOL_ID}" >> $GITHUB_OUTPUT
           echo "user_pool_client_id=${USER_POOL_CLIENT_ID}" >> $GITHUB_OUTPUT
+
       - name: 依存関係インストール
         working-directory: frontend
         run: npm ci
+
+      - name: テスト実行（Frontend）
+        working-directory: frontend
+        run: npm test
+
       - name: Viteビルド
         working-directory: frontend
         run: npm run build
@@ -356,12 +359,14 @@ jobs:
           VITE_API_URL: ${{ steps.cfn-outputs.outputs.api_url }}
           VITE_USER_POOL_ID: ${{ steps.cfn-outputs.outputs.user_pool_id }}
           VITE_USER_POOL_CLIENT_ID: ${{ steps.cfn-outputs.outputs.user_pool_client_id }}
+
       - name: S3にアップロード
         working-directory: frontend
         run: |
           aws s3 sync dist/ \
             s3://${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}/ \
             --delete
+
       - name: CloudFrontキャッシュ削除
         run: |
           DISTRIBUTION_ID=$(aws cloudfront list-distributions \
