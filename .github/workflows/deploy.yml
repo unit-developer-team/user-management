@@ -20,7 +20,7 @@ env:
   AWS_REGION: ap-northeast-1
   ECR_REPOSITORY_PREFIX: user-management-repo
   LAMBDA_FUNCTION_PREFIX: user-management
-  FRONTEND_S3_BUCKET_PREFIX: cloudfront-stack-hosting-bucket
+  FRONTEND_S3_BUCKET_PREFIX: cloudfront-hosting-bucket
 
 jobs:
   # ============================================================
