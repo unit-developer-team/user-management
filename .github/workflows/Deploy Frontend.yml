@@ -14,7 +14,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-1
-  FRONTEND_S3_BUCKET_PREFIX: cloudfront-stack-hosting-bucket
+  FRONTEND_S3_BUCKET_PREFIX: cloudfront-hosting-bucket
 
 jobs:
   # ============================================================
@@ -107,8 +107,9 @@ jobs:
 
       - name: CloudFrontキャッシュ削除
         run: |
-          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
-            --query "DistributionList.Items[?contains(Origins.Items[0].DomainName, '${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}')].Id" \
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.ENV }}-cloudfront \
+            --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" \
             --output text)
           aws cloudfront create-invalidation \
             --distribution-id $DISTRIBUTION_ID \

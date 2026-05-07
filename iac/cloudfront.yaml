@@ -76,3 +76,8 @@ Outputs:
     Description: "CloudFront URL"
     Export:
       Name: !Sub "${Env}-CloudFront-DomainName"
+  DistributionId:
+    Value: !Ref CloudFrontDistribution
+    Description: "CloudFront Distribution ID"
+    Export:
+      Name: !Sub "${Env}-CloudFront-DistributionId"
