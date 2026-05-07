@@ -101,6 +101,8 @@ jobs:
       - name: S3にアップロード
         working-directory: frontend
         run: |
+          echo "ENV=${{ env.ENV }}"
+          echo "BUCKET=s3://${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}/"
           aws s3 sync dist/ \
             s3://${{ env.ENV }}-${{ env.FRONTEND_S3_BUCKET_PREFIX }}/ \
             --delete
