@@ -68,7 +68,7 @@ Resources:
       FunctionName: !Ref FunctionName
       Architectures:
         - x86_64
-      Handler: index.handler
+      Handler: handlers/userHandler.handler
       Code:
         ZipFile: |
           exports.handler = async () => ({
