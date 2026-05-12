@@ -10,7 +10,7 @@ const getUsers = async (req, res) => {
         (0, logger_1.logInfo)("ユーザー一覧取得 開始", req);
         const users = await (0, dynamoService_1.getAllUsers)();
         users.forEach(user => {
-            user.name = `${user.name}さん`;
+            user.name = `${user.name}`;
         });
         (0, logger_1.logInfo)("ユーザー一覧取得 完了", req, { count: users.length });
         res.status(200).json(users);

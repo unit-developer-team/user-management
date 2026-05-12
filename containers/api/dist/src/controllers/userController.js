@@ -8,7 +8,7 @@ const getUsers = async (req, res) => {
     try {
         const users = await (0, dynamoService_1.getAllUsers)();
         users.forEach(user => {
-            user.name = `${user.name}さん`;
+            user.name = `${user.name}`;
         });
         res.status(200).json(users);
     }

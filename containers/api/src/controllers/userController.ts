@@ -11,7 +11,7 @@ export const getUsers = async (req: Request, res: Response) => {
     const users = await getAllUsers();
 
     users.forEach(user => {
-    user.name = `${user.name}さん`;
+    user.name = `${user.name}`;
     });
 
     logInfo("ユーザー一覧取得 完了", req, { count: users.length });
