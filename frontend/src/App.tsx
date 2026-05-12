@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Authenticator, translations } from "@aws-amplify/ui-react";
+import { Authenticator, ThemeProvider, translations, useAuthenticator, type Theme } from "@aws-amplify/ui-react";
 import "@aws-amplify/ui-react/styles.css";
 import { I18n } from "aws-amplify/utils";
 import UsersPage from "./pages/UsersPage";
+import AuthenticatorBackground from "./components/AuthenticatorBackground";
 
 I18n.putVocabularies(translations);
 I18n.putVocabularies({
@@ -185,15 +186,128 @@ function AppShell({ signOut, username, children }: { signOut?: () => void; usern
   );
 }
 
+const authTheme: Theme = {
+  name: "um-auth",
+  tokens: {
+    colors: {
+      brand: {
+        primary: {
+          10: { value: "#f5f5f5" },
+          80: { value: "#0a0a0a" },
+          90: { value: "#222" },
+          100: { value: "#000" },
+        },
+      },
+    },
+    components: {
+      authenticator: {
+        router: {
+          borderWidth: { value: "0" },
+          boxShadow: { value: "none" },
+          backgroundColor: { value: "transparent" },
+        },
+      },
+      button: {
+        primary: {
+          backgroundColor: { value: "#0a0a0a" },
+          color: { value: "#fff" },
+          borderColor: { value: "#0a0a0a" },
+          _hover: {
+            backgroundColor: { value: "#333" },
+            borderColor: { value: "#333" },
+          },
+          _focus: {
+            backgroundColor: { value: "#333" },
+            borderColor: { value: "#333" },
+          },
+        },
+        link: {
+          color: { value: "#0a0a0a" },
+          _hover: { color: { value: "#555" } },
+        },
+      },
+      fieldcontrol: {
+        borderColor: { value: "#d0d0d0" },
+        _focus: {
+          borderColor: { value: "#0a0a0a" },
+          boxShadow: { value: "0 0 0 1px #0a0a0a" },
+        },
+      },
+      tabs: {
+        item: {
+          color: { value: "#999" },
+          _active: {
+            color: { value: "#0a0a0a" },
+            borderColor: { value: "#0a0a0a" },
+          },
+          _hover: { color: { value: "#0a0a0a" } },
+        },
+      },
+    },
+    fontSizes: {
+      small: { value: "0.8rem" },
+      medium: { value: "0.875rem" },
+    },
+    radii: {
+      small: { value: "4px" },
+      medium: { value: "6px" },
+      large: { value: "8px" },
+    },
+  },
+};
+
+const authComponents = {
+  SignIn: {
+    Header() {
+      return (
+        <div style={{ padding: "32px 32px 0", textAlign: "center" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase", color: "#0a0a0a", marginBottom: 8 }}>
+            UM / System
+          </div>
+          <div style={{ width: 24, height: 1, background: "#0a0a0a", margin: "0 auto 20px" }} />
+          <p style={{ fontSize: 13, color: "#555", letterSpacing: "0.02em" }}>アカウントにサインイン</p>
+        </div>
+      );
+    },
+    Footer() {
+      const { toForgotPassword } = useAuthenticator();
+      return (
+        <div style={{ padding: "0 32px 28px", textAlign: "center" }}>
+          <button
+            onClick={toForgotPassword}
+            style={{ fontSize: 11, color: "#999", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.05em" }}
+          >
+            パスワードをお忘れですか？
+          </button>
+        </div>
+      );
+    },
+  },
+};
+
 function App() {
   return (
-    <Authenticator>
-      {({ signOut, user }) => (
-        <AppShell signOut={signOut} username={user?.username}>
-          <UsersPage />
-        </AppShell>
-      )}
-    </Authenticator>
+    <ThemeProvider theme={authTheme}>
+      <Authenticator.Provider>
+        <AuthenticatorContent />
+      </Authenticator.Provider>
+    </ThemeProvider>
+  );
+}
+
+function AuthenticatorContent() {
+  const { authStatus, signOut, user } = useAuthenticator((ctx) => [ctx.authStatus, ctx.signOut, ctx.user]);
+  if (authStatus !== "authenticated") {
+    return (
+      <AuthenticatorBackground>
+        <Authenticator components={authComponents} />
+      </AuthenticatorBackground>
+    );
+  }
+  return (
+    <AppShell signOut={signOut} username={user?.username}>
+      <UsersPage />
+    </AppShell>
   );
 }
 
