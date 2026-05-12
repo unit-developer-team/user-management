@@ -56,7 +56,7 @@ export default function AuthenticatorBackground({ children }: Props) {
       </div>
 
       <p style={{ marginTop: 28, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)" }}>
-        © 2025 DISP Unit Project
+        © 2026 DISP Unit Project
       </p>
     </div>
   );
