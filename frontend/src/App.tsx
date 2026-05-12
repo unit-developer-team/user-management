@@ -192,10 +192,10 @@ const authTheme: Theme = {
     colors: {
       brand: {
         primary: {
-          10: { value: "#f5f5f5" },
-          80: { value: "#0a0a0a" },
-          90: { value: "#222" },
-          100: { value: "#000" },
+          10: { value: "#eef2ff" },
+          80: { value: "#6366F1" },
+          90: { value: "#4F46E5" },
+          100: { value: "#4338CA" },
         },
       },
     },
@@ -209,38 +209,41 @@ const authTheme: Theme = {
       },
       button: {
         primary: {
-          backgroundColor: { value: "#0a0a0a" },
+          backgroundColor: { value: "#6366F1" },
           color: { value: "#fff" },
-          borderColor: { value: "#0a0a0a" },
+          borderColor: { value: "#6366F1" },
+          borderRadius: { value: "10px" },
           _hover: {
-            backgroundColor: { value: "#333" },
-            borderColor: { value: "#333" },
+            backgroundColor: { value: "#4F46E5" },
+            borderColor: { value: "#4F46E5" },
           },
           _focus: {
-            backgroundColor: { value: "#333" },
-            borderColor: { value: "#333" },
+            backgroundColor: { value: "#4F46E5" },
+            borderColor: { value: "#4F46E5" },
           },
         },
         link: {
-          color: { value: "#0a0a0a" },
-          _hover: { color: { value: "#555" } },
+          color: { value: "#6366F1" },
+          _hover: { color: { value: "#4F46E5" } },
         },
       },
       fieldcontrol: {
-        borderColor: { value: "#d0d0d0" },
+        borderColor: { value: "#e2e8f0" },
+        borderRadius: { value: "10px" },
+        boxShadow: { value: "0 1px 3px rgba(0,0,0,0.06)" },
         _focus: {
-          borderColor: { value: "#0a0a0a" },
-          boxShadow: { value: "0 0 0 1px #0a0a0a" },
+          borderColor: { value: "#6366F1" },
+          boxShadow: { value: "0 0 0 3px rgba(99,102,241,0.15)" },
         },
       },
       tabs: {
         item: {
-          color: { value: "#999" },
+          color: { value: "#94a3b8" },
           _active: {
-            color: { value: "#0a0a0a" },
-            borderColor: { value: "#0a0a0a" },
+            color: { value: "#6366F1" },
+            borderColor: { value: "#6366F1" },
           },
-          _hover: { color: { value: "#0a0a0a" } },
+          _hover: { color: { value: "#6366F1" } },
         },
       },
     },
@@ -249,9 +252,9 @@ const authTheme: Theme = {
       medium: { value: "0.875rem" },
     },
     radii: {
-      small: { value: "4px" },
-      medium: { value: "6px" },
-      large: { value: "8px" },
+      small: { value: "8px" },
+      medium: { value: "10px" },
+      large: { value: "12px" },
     },
   },
 };
@@ -261,11 +264,21 @@ const authComponents = {
     Header() {
       return (
         <div style={{ padding: "32px 32px 0", textAlign: "center" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase", color: "#0a0a0a", marginBottom: 8 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+            margin: "0 auto 16px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 12px rgba(99,102,241,0.4)",
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C9.243 2 7 4.243 7 7s2.243 5 5 5 5-2.243 5-5-2.243-5-5-5zm0 12c-5.33 0-8 2.686-8 4v2h16v-2c0-1.314-2.67-4-8-4z" fill="white"/>
+            </svg>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 6, letterSpacing: "-0.01em" }}>
             UM / System
           </div>
-          <div style={{ width: 24, height: 1, background: "#0a0a0a", margin: "0 auto 20px" }} />
-          <p style={{ fontSize: 13, color: "#555", letterSpacing: "0.02em" }}>アカウントにサインイン</p>
+          <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>アカウントにサインイン</p>
         </div>
       );
     },
@@ -275,7 +288,7 @@ const authComponents = {
         <div style={{ padding: "0 32px 28px", textAlign: "center" }}>
           <button
             onClick={toForgotPassword}
-            style={{ fontSize: 11, color: "#999", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.05em" }}
+            style={{ fontSize: 12, color: "#6366F1", background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}
           >
             パスワードをお忘れですか？
           </button>
