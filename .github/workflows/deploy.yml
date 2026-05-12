@@ -60,7 +60,7 @@ jobs:
           no-fail-on-empty-changeset: "1"
       - name: Notify UI (network)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-network"}'
   # ============================================================
@@ -117,7 +117,7 @@ jobs:
           no-fail-on-empty-changeset: "1"
       - name: Notify UI (ecr)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-ecr"}'
 
@@ -146,7 +146,7 @@ jobs:
           no-fail-on-empty-changeset: "1"
       - name: Notify UI (cognito)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-cognito"}'
 
@@ -208,7 +208,7 @@ jobs:
             --force-new-deployment
       - name: Notify UI (ecs)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-ecs"}'
 
@@ -278,7 +278,7 @@ jobs:
             --zip-file fileb://function.zip
       - name: Notify UI (lambda)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-lambda"}'
 
@@ -307,7 +307,7 @@ jobs:
           no-fail-on-empty-changeset: "1"
       - name: Notify UI (cloudfront)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-cloudfront"}'
 
@@ -338,7 +338,7 @@ jobs:
           no-fail-on-empty-changeset: "1"
       - name: Notify UI (apigw)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-apigw"}'
 
@@ -419,6 +419,6 @@ jobs:
             --paths "/*"
       - name: Notify UI (frontend)
         run: |
-          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev//event \
+          curl -X POST https://iac-demo-ui.git-dev-001.workers.dev/event \
             -H "Content-Type: application/json" \
             -d '{"step":"deploy-frontend"}'
