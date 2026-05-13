@@ -3,31 +3,31 @@
 // deploy.yml の job: 名と完全一致させること
 // ============================================================
 const JOB_MAP = {
-  'setup':            { regions: ['r-vpc', 'r-pub', 'r-prv'], comps: [] },
-  'deploy-network':   { regions: [], comps: ['c-alb', 'c-vpce'] },
-  'deploy-cognito':   { regions: [], comps: ['c-cognito'] },
-  'deploy-dynamodb':  { regions: [], comps: ['c-dynamodb'] },
-  'deploy-ecr':       { regions: [], comps: ['c-ecr'] },
-  'deploy-ecs':       { regions: [], comps: ['c-ecs'] },
-  'deploy-lambda':    { regions: [], comps: ['c-lambda'] },
-  'deploy-apigw':     { regions: [], comps: ['c-apigw'] },
-  'deploy-cloudfront':{ regions: [], comps: ['c-cloudfront'] },
-  'deploy-frontend':  { regions: [], comps: ['c-s3'] },
+  'setup':             { regions: ['vpc', 'subnet-public', 'subnet-private'], comps: [] },
+  'deploy-network':    { regions: [], comps: ['alb', 'vpce'] },
+  'deploy-cognito':    { regions: [], comps: ['cognito'] },
+  'deploy-dynamodb':   { regions: [], comps: ['dynamodb'] },
+  'deploy-ecr':        { regions: [], comps: ['ecr'] },
+  'deploy-ecs':        { regions: [], comps: ['ecs'] },
+  'deploy-lambda':     { regions: [], comps: ['lambda'] },
+  'deploy-apigw':      { regions: [], comps: ['apigw'] },
+  'deploy-cloudfront': { regions: [], comps: ['cloudfront'] },
+  'deploy-frontend':   { regions: [], comps: ['s3'] },
 };
 
-const POLL_MS = 8000; // 8秒ごと（PAT有りなら短縮OK）
+const POLL_MS = 8000; // 8秒ごと（PAT有りなら短縮OK、無しなら60秒推奨）
 
 let pollTimer = null;
 let seenJobs  = new Set();
 
 // ============================================================
-// URL と PAT を解析してポーリング開始
+// Live モード：GitHub APIポーリング開始
 // ============================================================
 function startLive() {
   resetAll();
 
-  const url = document.getElementById('run-url').value.trim();
-  const pat  = document.getElementById('pat-input').value.trim();
+  const url = document.getElementById('inp-url').value.trim();
+  const pat  = document.getElementById('inp-pat').value.trim();
   const parsed = parseRunUrl(url);
 
   if (!parsed) {
@@ -35,14 +35,14 @@ function startLive() {
     return;
   }
 
-  addLog(`Polling start: ${parsed.owner}/${parsed.repo} run#${parsed.runId}`, 'info');
+  addLog(`Polling: ${parsed.owner}/${parsed.repo} run#${parsed.runId}`, 'info');
   setBadge('Polling…', 'running');
 
   async function tick() {
     const result = await fetchJobs(parsed.owner, parsed.repo, parsed.runId, pat);
 
     if (result === 'rate-limited') {
-      addLog('Rate limit到達。しばらく待ちます…', 'warn');
+      addLog('Rate limit到達。PATを入力してください', 'warn');
       return;
     }
     if (result === 'error') {
@@ -57,7 +57,7 @@ function startLive() {
     }
   }
 
-  tick(); // 即時1回
+  tick();
   pollTimer = setInterval(tick, POLL_MS);
 }
 
@@ -78,7 +78,6 @@ async function fetchJobs(owner, repo, runId, pat) {
     return 'error';
   }
 
-  // レート制限チェック
   if (res.status === 403 || res.status === 429) return 'rate-limited';
   if (!res.ok) return 'error';
 
@@ -86,7 +85,6 @@ async function fetchJobs(owner, repo, runId, pat) {
   let allCompleted = true;
 
   for (const job of data.jobs) {
-    // 成功完了済み & まだ処理していない
     if (
       job.status     === 'completed' &&
       job.conclusion === 'success'   &&
@@ -95,11 +93,27 @@ async function fetchJobs(owner, repo, runId, pat) {
       seenJobs.add(job.id);
       revealJob(job.name);
     }
-
     if (job.status !== 'completed') allCompleted = false;
   }
 
   return allCompleted ? 'done' : 'running';
+}
+
+// ============================================================
+// Demo モード：タイマーで順番に表示
+// ============================================================
+function runDemo() {
+  resetAll();
+  setBadge('Demo中…', 'running');
+  const delay = 1200;
+  Object.keys(JOB_MAP).forEach((key, i) => {
+    setTimeout(() => {
+      revealJob(key);
+      if (i === Object.keys(JOB_MAP).length - 1) {
+        setBadge('Complete ✓', 'done');
+      }
+    }, delay * (i + 1));
+  });
 }
 
 // ============================================================
@@ -111,12 +125,22 @@ function revealJob(jobName) {
 
   addLog(`✓ ${jobName}`, 'success');
 
-  mapping.regions.forEach(id => {
-    document.getElementById(id)?.classList.replace('hidden', 'visible');
+  mapping.regions.forEach(id => show(id));
+
+  // 複数コンポーネントは少しずらして表示
+  mapping.comps.forEach((id, i) => {
+    setTimeout(() => show(id), i * 150);
   });
-  mapping.comps.forEach(id => {
-    document.getElementById(id)?.classList.replace('hidden', 'visible');
-  });
+}
+
+// ============================================================
+// 要素を表示（hidden → visible）
+// ============================================================
+function show(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.classList.add('visible');
 }
 
 // ============================================================
@@ -136,8 +160,9 @@ function stopPolling() {
 function resetAll() {
   stopPolling();
   seenJobs.clear();
-  document.querySelectorAll('.comp, .region').forEach(el => {
-    el.classList.replace('visible', 'hidden');
+  document.querySelectorAll('.comp, .box').forEach(el => {
+    el.classList.remove('visible');
+    el.classList.add('hidden');
   });
   document.getElementById('log').innerHTML = '';
   setBadge('Idle', '');
@@ -146,14 +171,14 @@ function resetAll() {
 function setBadge(text, state) {
   const b = document.getElementById('badge');
   b.textContent = text;
-  b.className = state;
+  b.className = state || '';
 }
 
-function addLog(msg, type = 'info') {
+function addLog(msg, type) {
   const el   = document.getElementById('log');
   const line = document.createElement('div');
   const ts   = new Date().toLocaleTimeString('ja-JP');
-  line.className = `log-line ${type}`;
+  line.className = 'log-line ' + (type || 'info');
   line.textContent = `[${ts}] ${msg}`;
-  el.prepend(line); // 新しいログを上に
+  el.prepend(line);
 }
