@@ -41,6 +41,8 @@ Resources:
       Port: 3000
       TargetType: ip
       HealthCheckPath: "/health"
+      HealthCheckIntervalSeconds: 10
+      HealthyThresholdCount: 2
       Matcher:
         HttpCode: "200"
       Tags:
