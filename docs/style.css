@@ -125,7 +125,7 @@ h1 {
 
 /* Public Subnet */
 #subnet-private {
-  top: 110px;
+  top: 30px;
   left: 330px;
   width: 250px;
   height: 420px;
@@ -135,12 +135,12 @@ h1 {
 /* --- VPC内コンポーネント --- */
 
 /* Public Subnet 内: ALB */
-#alb { top: 150px; left: 85px; }
+#alb { top: 100px; left: 85px; }
+#lambda   { top: 280px; left: 85px; }
 
 /* Private Subnet 内 */
-#ecs      { top: 150px; left: 90px; }
-#dynamodb { top: 265px; left: 480px; }
-#lambda   { top: 350px; left: 480px; }
+#ecs      { top: 100px; left: 90px; }
+#dynamodb { top: 265px; left: 850px; }
 
 /* --- VPC外・左列 --- */
 #cloudfront { top:  80px; left: 20px; }
@@ -152,7 +152,7 @@ h1 {
 #ecr { top: 150px; left: 850px; }
 
 /* --- VPCE アイコン（VPCE枠の右肩） --- */
-#vpce { top: 35px; left: 770px; }
+#vpce { top: 280px; left: 90px; }
 
 /* ============================================================
    コントロールバー
