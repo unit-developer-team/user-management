@@ -58,11 +58,7 @@ jobs:
           template: iac/network.yaml
           parameter-overrides: "Env=${{ env.ENV }}"
           no-fail-on-empty-changeset: "1"
-      - name: Notify UI (network)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-network"}'
+
   # ============================================================
   # 2. DynamoDB
   # ============================================================
@@ -86,11 +82,6 @@ jobs:
           template: iac/dynamodb.yaml
           parameter-overrides: "Env=${{ env.ENV }}"
           no-fail-on-empty-changeset: "1"
-      - name: Notify UI (dynamodb)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-dynamodb"}'
 
   # ============================================================
   # 3. ECR
@@ -115,11 +106,7 @@ jobs:
           template: iac/ecr.yaml
           parameter-overrides: "Env=${{ env.ENV }}"
           no-fail-on-empty-changeset: "1"
-      - name: Notify UI (ecr)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-ecr"}'
+
 
   # ============================================================
   # 4. Cognito
@@ -144,11 +131,7 @@ jobs:
           template: iac/cognito.yaml
           parameter-overrides: "Env=${{ env.ENV }}"
           no-fail-on-empty-changeset: "1"
-      - name: Notify UI (cognito)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-cognito"}'
+
 
   # ============================================================
   # 5. ECS: テスト → Dockerビルド → ECRプッシュ → スタック更新
@@ -206,11 +189,7 @@ jobs:
             --cluster ${{ env.ENV }}-user-management-cluster \
             --service ${{ env.ENV }}-user-management-api-service \
             --force-new-deployment
-      - name: Notify UI (ecs)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-ecs"}'
+
 
   # ============================================================
   # 6. Lambda: CFnでダミー作成 → ビルド → 直接アップロード
@@ -276,11 +255,7 @@ jobs:
           aws lambda update-function-code \
             --function-name ${{ env.ENV }}-${{ env.LAMBDA_FUNCTION_PREFIX }} \
             --zip-file fileb://function.zip
-      - name: Notify UI (lambda)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-lambda"}'
+
 
   # ============================================================
   # 7. CloudFront（Network完了後すぐ並行実行）
@@ -305,11 +280,7 @@ jobs:
           template: iac/cloudfront.yaml
           parameter-overrides: "Env=${{ env.ENV }}"
           no-fail-on-empty-changeset: "1"
-      - name: Notify UI (cloudfront)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-cloudfront"}'
+
 
   # ============================================================
   # 8. API Gateway
@@ -336,11 +307,7 @@ jobs:
             Env=${{ env.ENV }},
             LambdaStackName=${{ env.ENV }}-lambda
           no-fail-on-empty-changeset: "1"
-      - name: Notify UI (apigw)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-apigw"}'
+
 
   # ============================================================
   # フロントエンド: CFn Outputsから環境変数を自動取得してビルド
@@ -417,8 +384,4 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id $DISTRIBUTION_ID \
             --paths "/*"
-      - name: Notify UI (frontend)
-        run: |
-          curl -X POST https://iac-event-worker.git-dev-001.workers.dev/event \
-            -H "Content-Type: application/json" \
-            -d '{"step":"deploy-frontend"}'
+

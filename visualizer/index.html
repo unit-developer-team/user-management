@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>IAC Deploy Visualizer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>AWS Infrastructure Deploy</h1>
+
+  <div id="controls">
+    <input id="run-url" type="text"
+      placeholder="https://github.com/owner/repo/actions/runs/123456789">
+    <input id="pat-input" type="password" placeholder="GitHub PAT（任意）">
+    <button onclick="startLive()">▶ Live</button>
+    <button onclick="resetAll()">↺ Reset</button>
+    <span id="badge">Idle</span>
+  </div>
+
+  <div id="stage">
+    <!-- 各コンポーネント -->
+    <div class="region hidden" id="r-vpc">
+      <span class="label">VPC</span>
+      <div class="region hidden" id="r-pub"><span class="label">Public Subnet</span></div>
+      <div class="region hidden" id="r-prv"><span class="label">Private Subnet</span></div>
+    </div>
+
+    <div class="comp hidden" id="c-alb">ALB</div>
+    <div class="comp hidden" id="c-vpce">VPC Endpoint</div>
+    <div class="comp hidden" id="c-cognito">Cognito</div>
+    <div class="comp hidden" id="c-dynamodb">DynamoDB</div>
+    <div class="comp hidden" id="c-ecr">ECR</div>
+    <div class="comp hidden" id="c-ecs">ECS</div>
+    <div class="comp hidden" id="c-lambda">Lambda</div>
+    <div class="comp hidden" id="c-apigw">API GW</div>
+    <div class="comp hidden" id="c-s3">S3</div>
+    <div class="comp hidden" id="c-cloudfront">CloudFront</div>
+  </div>
+
+  <div id="log"></div>
+  <script src="script.js"></script>
+</body>
+</html>
