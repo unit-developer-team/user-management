@@ -1,0 +1,6 @@
+# ビルド成果物
+lambda/bff/function.zip
+lambda/bff/dist/
+
+# node_modules
+node_modules/

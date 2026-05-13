@@ -1,38 +1,6 @@
 // services/apiForwarder.ts
 import { APIGatewayEvent } from "aws-lambda";
-import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { logError, logInfo } from "../utils/logger";
-
-const sm = new SecretsManagerClient({ region: "ap-northeast-1" });
-
-interface Config {
-  albUrl: string;          // ← 環境変数
-  internalToken: string;   // ← Secrets Manager
-}
-
-// コールドスタート時のみ取得
-let cachedToken: string | null = null;
-
-// INTERNAL_TOKEN だけ Secrets Manager から取得
-const getInternalToken = async (): Promise<string> => {
-  if (cachedToken) return cachedToken;
-
-  const res = await sm.send(
-    new GetSecretValueCommand({ SecretId: "/myapp/prod/config" })
-  );
-
-  const secret = JSON.parse(res.SecretString ?? "{}");
-
-  if (!secret.INTERNAL_TOKEN) {
-    throw new Error("シークレットに INTERNAL_TOKEN がありません");
-  }
-
-  cachedToken = secret.INTERNAL_TOKEN;
-  if (!cachedToken) {
-  throw new Error("Token が取得されていません");
-}
-return cachedToken;
-};
 
 export const forwardToApi = async (event: APIGatewayEvent) => {
   // ALB_URL は環境変数から取得
@@ -41,8 +9,10 @@ export const forwardToApi = async (event: APIGatewayEvent) => {
     throw new Error("ALB_URL 環境変数が設定されていません");
   }
 
-  // INTERNAL_TOKEN は Secrets Manager から取得
-  const internalToken = await getInternalToken();
+  const internalToken = process.env.INTERNAL_TOKEN;
+  if (!internalToken) {
+    throw new Error("INTERNAL_TOKEN 環境変数が設定されていません");
+  }
 
   const path = (event as any).rawPath ?? event.path ?? "/users";
   const url = `${albUrl}${path}`;
