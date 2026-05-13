@@ -10,55 +10,65 @@
 
   <div id="diagram">
 
-    <!-- Network Layer -->
-    <div id="subnet-public" class="box hidden"><span class="box-label">VPCE（VPC Endpoint）</span></div>
-    <div id="vpc" class="box hidden"><span class="box-label">VPC</span></div>
-    <div id="subnet-private" class="box hidden"><span class="box-label">Private Subnet</span></div>
+    <!-- VPC -->
+    <div id="vpc" class="box hidden">
+      <span class="box-label">VPC</span>
 
-    <!-- Public Subnet コンポーネント -->
-    <div id="alb" class="comp hidden">
-      <img src="assets/alb.png" alt="ALB">
-      <span>ALB</span>
-    </div>
-    <div id="vpce" class="comp hidden">
-      <img src="assets/vpce.png" alt="VPC Endpoint">
-      <span>VPC Endpoint</span>
-    </div>
-    <div id="ecr" class="comp hidden">
-      <img src="assets/ecr.png" alt="ECR">
-      <span>ECR</span>
-    </div>
-    <div id="ecs" class="comp hidden">
-      <img src="assets/ecs.png" alt="ECS">
-      <span>ECS</span>
+      <!-- Public Subnet -->
+      <div id="subnet-public" class="box hidden">
+        <span class="box-label">Public Subnet</span>
+
+        <div id="alb" class="comp hidden">
+          <img src="assets/alb.png" alt="ALB">
+          <span>ALB</span>
+        </div>
+      </div>
+
+      <!-- Private Subnet -->
+      <div id="subnet-private" class="box hidden">
+        <span class="box-label">Private Subnet</span>
+
+        <div id="ecs" class="comp hidden">
+          <img src="assets/ecs.png" alt="ECS">
+          <span>ECS</span>
+        </div>
+
+        <div id="vpce" class="comp hidden">
+          <img src="assets/vpce.png" alt="VPC Endpoint">
+          <span>VPC Endpoint</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Private Subnet コンポーネント -->
+    <!-- VPC の外 -->
+    <div id="cloudfront" class="comp hidden">
+      <img src="assets/cloudfront.png" alt="CloudFront">
+      <span>CloudFront</span>
+    </div>
+
+    <div id="s3" class="comp hidden">
+      <img src="assets/s3.png" alt="S3">
+      <span>S3</span>
+    </div>
+
     <div id="cognito" class="comp hidden">
       <img src="assets/cognito.png" alt="Cognito">
       <span>Cognito</span>
     </div>
+
     <div id="dynamodb" class="comp hidden">
       <img src="assets/dynamodb.png" alt="DynamoDB">
       <span>DynamoDB</span>
     </div>
-    <div id="lambda" class="comp hidden">
-      <img src="assets/lambda.png" alt="Lambda">
-      <span>Lambda</span>
-    </div>
+
     <div id="apigw" class="comp hidden">
       <img src="assets/apigw.png" alt="API Gateway">
       <span>API Gateway</span>
     </div>
 
-    <!-- VPC外 -->
-    <div id="s3" class="comp hidden">
-      <img src="assets/s3.png" alt="S3">
-      <span>S3</span>
-    </div>
-    <div id="cloudfront" class="comp hidden">
-      <img src="assets/cloudfront.png" alt="CloudFront">
-      <span>CloudFront</span>
+    <div id="ecr" class="comp hidden">
+      <img src="assets/ecr.png" alt="ECR">
+      <span>ECR</span>
     </div>
 
   </div>
