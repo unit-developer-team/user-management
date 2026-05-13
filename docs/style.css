@@ -116,24 +116,30 @@ h1 {
 
 /* VPCE枠（VPCの外側、サブネット全体を囲む） */
 #subnet-public {
-  top: 30px; left: 120px; width: 700px; height: 560px;
+  top: 30px;
+  left: 30px;
+  width: 250px;
+  height: 420px;
   border-color: #5a8fc9;
 }
 
 /* Public Subnet */
 #subnet-private {
-  top: 110px; left: 170px; width: 250px; height: 420px;
+  top: 110px;
+  left: 330px;
+  width: 250px;
+  height: 420px;
   border-color: #60a060;
 }
 
 /* --- VPC内コンポーネント --- */
 
 /* Public Subnet 内: ALB */
-#alb { top: 200px; left: 215px; }
+#alb { top: 150px; left: 85px; }
 
 /* Private Subnet 内 */
-#ecs      { top: 150px; left: 480px; }
-#dynamodb { top: 250px; left: 480px; }
+#ecs      { top: 150px; left: 90px; }
+#dynamodb { top: 265px; left: 480px; }
 #lambda   { top: 350px; left: 480px; }
 
 /* --- VPC外・左列 --- */
@@ -143,7 +149,7 @@ h1 {
 #s3         { top: 440px; left: 20px; }
 
 /* --- VPC外・右列 --- */
-#ecr { top: 200px; left: 840px; }
+#ecr { top: 150px; left: 850px; }
 
 /* --- VPCE アイコン（VPCE枠の右肩） --- */
 #vpce { top: 35px; left: 770px; }
