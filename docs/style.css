@@ -35,7 +35,7 @@
 }
 
 .step span {
-  font-size: 11px;
+  font-size: 16px;
   color: #bbb;
   margin-top: 3px;
   transition: color 0.4s;
@@ -230,7 +230,7 @@ h1 {
 }
 
 .comp span {
-  font-size: 10px;
+  font-size: 12px;
   color: #444;
   text-align: center;
   line-height: 1.3;
