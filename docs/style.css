@@ -3,15 +3,16 @@
    ============================================================ */
 #step-bar {
   margin: 10px auto 8px;
-  width: 1100px;
+  width: 1200px;
 }
 
 .step-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 10px;
   flex-wrap: nowrap;
+  padding: 0 8px;
 }
 
 .step {
@@ -19,13 +20,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 76px;
-  min-height: 60px;
-  padding: 6px 4px;
-  border-radius: 8px;
+  width: 90px;
+  min-height: 72px;
+  padding: 8px 5px;
+  border-radius: 10px;
   border: 2px solid #ddd;
   background: #f8f8f8;
-  font-size: 18px;
+  font-size: 22px;
   color: #bbb;
   transition: all 0.4s ease;
   cursor: default;
@@ -34,9 +35,9 @@
 }
 
 .step span {
-  font-size: 10px;
+  font-size: 11px;
   color: #bbb;
-  margin-top: 2px;
+  margin-top: 3px;
   transition: color 0.4s;
 }
 
@@ -60,19 +61,19 @@
 
 .step.done::after {
   content: ' ✓';
-  font-size: 10px;
+  font-size: 11px;
   color: #2e7d32;
 }
 
 .step-arrow {
-  font-size: 18px;
+  font-size: 22px;
   color: #ccc;
   line-height: 1;
   flex-shrink: 0;
 }
 
 .parallel-arrow {
-  font-size: 22px;
+  font-size: 26px;
   color: #aaa;
 }
 
@@ -80,7 +81,7 @@
 .step-parallel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   position: relative;
   align-items: center;
 }
@@ -91,14 +92,14 @@
 }
 
 .parallel-label {
-  font-size: 9px;
+  font-size: 10px;
   color: #aaa;
   text-align: center;
   letter-spacing: 0.05em;
-  margin-top: 2px;
+  margin-top: 3px;
   background: #f0f0f0;
   border-radius: 4px;
-  padding: 1px 6px;
+  padding: 1px 8px;
 }
 
 @keyframes pulse-step {
