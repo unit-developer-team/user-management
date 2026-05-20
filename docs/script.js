@@ -3,15 +3,15 @@
 // ============================================================
 const JOB_MAP = {
   'setup':             { regions: ['vpc', 'subnet-public', 'subnet-private'], comps: [], popupTarget: 'vpc', label: 'Setup', desc: '🏗️ VPC・サブネットを構築中\nネットワークの土台を作ります' },
-  'deploy-network':    { regions: [], comps: ['alb', 'vpce'], popupTarget: 'alb', label: 'Network', desc: '🔀 ALB・VPCエンドポイントを配置\nトラフィックの入口と内部通信経路を確立します' },
+  'deploy-network':    { regions: [], comps: ['alb', 'vpce'], popupTarget: 'alb', label: 'Network', desc: '🔀 ALB・VPCエンドポイントを配置\n外部アクセスと内部通信の経路を準備します' },
   'deploy-cognito':    { regions: [], comps: ['cognito'], popupTarget: 'cognito', label: 'Cognito', desc: '🔐 Cognitoを起動\nユーザー認証・ログイン管理を担います' },
-  'deploy-dynamodb':   { regions: [], comps: ['dynamodb'], popupTarget: 'dynamodb', label: 'DynamoDB', desc: '🗄️ DynamoDBを起動\n高速なNoSQLデータベースです' },
+  'deploy-dynamodb':   { regions: [], comps: ['dynamodb'], popupTarget: 'dynamodb', label: 'DynamoDB', desc: '🗄️ DynamoDBを起動\nアプリのデータを保存できるようにします' },
   'deploy-ecr':        { regions: [], comps: ['ecr'], popupTarget: 'ecr', label: 'ECR', desc: '📦 ECRを起動\nDockerイメージを保管するレジストリです' },
   'deploy-ecs':        { regions: [], comps: ['ecs'], popupTarget: 'ecs', label: 'ECS', desc: '🚢 ECSを起動\nコンテナアプリケーションを実行します' },
-  'deploy-lambda':     { regions: [], comps: ['lambda'], popupTarget: 'lambda', label: 'Lambda', desc: '⚡ Lambdaを起動\nサーバーレス関数で軽量処理を行います' },
-  'deploy-apigw':      { regions: [], comps: ['apigw'], popupTarget: 'apigw', label: 'API GW', desc: '🌐 API Gatewayを起動\nAPIのリクエストを受け付け振り分けます' },
-  'deploy-cloudfront': { regions: [], comps: ['cloudfront'], popupTarget: 'cloudfront', label: 'CloudFront', desc: '⚡ CloudFrontを起動\nCDNで世界中へ高速コンテンツ配信します' },
-  'deploy-frontend':   { regions: [], comps: ['s3'], popupTarget: 's3', label: 'Frontend', desc: '🖥️ S3へフロントエンドをデプロイ\nWebサイトのファイルを配信します' },
+  'deploy-lambda':     { regions: [], comps: ['lambda'], popupTarget: 'lambda', label: 'Lambda', desc: '⚡ Lambdaを起動\n必要な処理を自動実行できるようにします' },
+  'deploy-apigw':      { regions: [], comps: ['apigw'], popupTarget: 'apigw', label: 'API GW', desc: '🌐 API Gatewayを起動\nアプリへのアクセスを受け付けます' },
+  'deploy-cloudfront': { regions: [], comps: ['cloudfront'], popupTarget: 'cloudfront', label: 'CloudFront', desc: '⚡ CloudFrontを起動\nWebサイトを快適に表示できるようにします' },
+  'deploy-frontend':   { regions: [], comps: ['s3'], popupTarget: 's3', label: 'Frontend', desc: '🖥️ S3へフロントエンドをデプロイ\nブラウザから利用できるようにします' },
 };
 
 const POLL_MS = 8000;
@@ -197,7 +197,7 @@ function showToast(message, jobName) {
     const diagram = document.getElementById('diagram').getBoundingClientRect();
 
     const pw = 220;
-    const gap = 20;
+    const gap = 28;
 
     let left, top;
 
