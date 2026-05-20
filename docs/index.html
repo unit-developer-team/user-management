@@ -8,6 +8,32 @@
 <body>
   <h1>デモ用（AWSのサービスが立ち上がっていくイメージ画面）</h1>
 
+  <!-- 進捗ステップバー -->
+  <div id="step-bar">
+    <div class="step" data-job="setup">🏗️<br><span>Setup</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-network">🔀<br><span>Network</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-cognito">🔐<br><span>Cognito</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-dynamodb">🗄️<br><span>DynamoDB</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-ecr">📦<br><span>ECR</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-ecs">🚢<br><span>ECS</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-lambda">⚡<br><span>Lambda</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-apigw">🌐<br><span>API GW</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-cloudfront">🚀<br><span>CloudFront</span></div>
+    <div class="step-arrow">›</div>
+    <div class="step" data-job="deploy-frontend">🖥️<br><span>Frontend</span></div>
+  </div>
+
+  <!-- トースト通知エリア -->
+  <div id="toast-container"></div>
+
   <div id="diagram">
 
     <!-- VPC -->

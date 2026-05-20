@@ -76,25 +76,25 @@ export default function AuthenticatorBackground({ children }: Props) {
         ))}
       </div>
 
-      {/* ── Two-column container (centered) ── */}
+      {/* ── Two-column container ── */}
       <div style={{
         position: "relative",
         zIndex: 1,
         width: "100%",
-        maxWidth: "min(1080px, 92vw)",
+        maxWidth: 1400,
         margin: "0 auto",
         height: "100vh",
         display: "flex",
         alignItems: "center",
-        padding: "48px 40px",
-        gap: 48,
+        padding: "48px 6vw",
+        gap: "4vw",
         boxSizing: "border-box",
       }}>
 
       {/* ── Left brand ── */}
       <div style={{
-        flex: "0 0 auto",
-        width: "46%",
+        flex: 1,
+        minWidth: 0,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -133,12 +133,12 @@ export default function AuthenticatorBackground({ children }: Props) {
           <div style={{ position: "relative", lineHeight: 1 }}>
             <div style={{
               position: "absolute", top: 3, left: 3,
-              fontSize: "clamp(64px, 9vw, 100px)", fontWeight: 900, letterSpacing: "-0.04em",
+              fontSize: "clamp(80px, 11vw, 140px)", fontWeight: 900, letterSpacing: "-0.04em",
               color: "transparent", WebkitTextStroke: "1px rgba(99,102,241,0.12)",
               userSelect: "none",
             }}>DISP</div>
             <div style={{
-              fontSize: "clamp(64px, 9vw, 100px)", fontWeight: 900, letterSpacing: "-0.04em",
+              fontSize: "clamp(80px, 11vw, 140px)", fontWeight: 900, letterSpacing: "-0.04em",
               background: "linear-gradient(135deg, #E0E7FF 0%, #A5B4FC 40%, #818CF8 100%)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
               filter: "drop-shadow(0 0 24px rgba(99,102,241,0.4))",
@@ -149,7 +149,7 @@ export default function AuthenticatorBackground({ children }: Props) {
           {/* UNIT */}
           <div style={{ lineHeight: 1, marginTop: 2 }}>
             <div style={{
-              fontSize: "clamp(64px, 9vw, 100px)", fontWeight: 900, letterSpacing: "-0.04em",
+              fontSize: "clamp(80px, 11vw, 140px)", fontWeight: 900, letterSpacing: "-0.04em",
               background: "linear-gradient(135deg, #C4B5FD 0%, #A78BFA 50%, #7C3AED 100%)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
               filter: "drop-shadow(0 0 24px rgba(139,92,246,0.35))",
@@ -164,14 +164,14 @@ export default function AuthenticatorBackground({ children }: Props) {
             borderRadius: 2, boxShadow: "0 0 12px rgba(99,102,241,0.4)",
           }} />
 
-          <p style={{ marginTop: 20, fontSize: 12, color: "rgba(255,255,255,0.3)", letterSpacing: "0.04em", lineHeight: 1.7, maxWidth: 320, margin: "20px 0 0" }}>
+          <p style={{ marginTop: 20, fontSize: 15, color: "rgba(255,255,255,0.3)", letterSpacing: "0.04em", lineHeight: 1.7, maxWidth: 400, margin: "20px 0 0" }}>
             AWS共通基盤 — トライアル開発を迅速に<br />開始するためのプラットフォーム
           </p>
 
           <div style={{ display: "flex", gap: 8, marginTop: 24, flexWrap: "wrap" }}>
             {["React 18", "ECS Fargate", "DynamoDB", "Cognito"].map((t) => (
               <span key={t} style={{
-                fontSize: 10, fontWeight: 500, letterSpacing: "0.06em",
+                fontSize: 13, fontWeight: 500, letterSpacing: "0.06em",
                 color: "rgba(165,180,252,0.7)",
                 background: "rgba(99,102,241,0.1)",
                 border: "1px solid rgba(99,102,241,0.2)",
@@ -191,10 +191,10 @@ export default function AuthenticatorBackground({ children }: Props) {
       </div>
 
       {/* ── Right: login card ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ flex: "0 0 auto", width: "min(480px, 44vw)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <div style={{
           width: "100%",
-          maxWidth: 500,
+          maxWidth: "100%",
           background: "rgba(255,255,255,0.04)",
           backdropFilter: "blur(32px)",
           WebkitBackdropFilter: "blur(32px)",

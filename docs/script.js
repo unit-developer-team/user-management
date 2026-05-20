@@ -3,16 +3,16 @@
 // deploy.yml の job: 名と完全一致させること
 // ============================================================
 const JOB_MAP = {
-  'setup':             { regions: ['vpc', 'subnet-public', 'subnet-private'], comps: [] },
-  'deploy-network':    { regions: [], comps: ['alb', 'vpce'] },
-  'deploy-cognito':    { regions: [], comps: ['cognito'] },
-  'deploy-dynamodb':   { regions: [], comps: ['dynamodb'] },
-  'deploy-ecr':        { regions: [], comps: ['ecr'] },
-  'deploy-ecs':        { regions: [], comps: ['ecs'] },
-  'deploy-lambda':     { regions: [], comps: ['lambda'] },
-  'deploy-apigw':      { regions: [], comps: ['apigw'] },
-  'deploy-cloudfront': { regions: [], comps: ['cloudfront'] },
-  'deploy-frontend':   { regions: [], comps: ['s3'] },
+  'setup':             { regions: ['vpc', 'subnet-public', 'subnet-private'], comps: [], label: 'Setup', desc: '🏗️ VPC・サブネットを構築中\nネットワークの土台を作ります' },
+  'deploy-network':    { regions: [], comps: ['alb', 'vpce'], label: 'Network', desc: '🔀 ALB・VPCエンドポイントを配置\nトラフィックの入口と内部通信経路を確立します' },
+  'deploy-cognito':    { regions: [], comps: ['cognito'], label: 'Cognito', desc: '🔐 Cognitoを起動\nユーザー認証・ログイン管理を担います' },
+  'deploy-dynamodb':   { regions: [], comps: ['dynamodb'], label: 'DynamoDB', desc: '🗄️ DynamoDBを起動\n高速なNoSQLデータベースです' },
+  'deploy-ecr':        { regions: [], comps: ['ecr'], label: 'ECR', desc: '📦 ECRを起動\nDockerイメージを保管するレジストリです' },
+  'deploy-ecs':        { regions: [], comps: ['ecs'], label: 'ECS', desc: '🚢 ECSを起動\nコンテナアプリケーションを実行します' },
+  'deploy-lambda':     { regions: [], comps: ['lambda'], label: 'Lambda', desc: '⚡ Lambdaを起動\nサーバーレス関数で軽量処理を行います' },
+  'deploy-apigw':      { regions: [], comps: ['apigw'], label: 'API GW', desc: '🌐 API Gatewayを起動\nAPIのリクエストを受け付け振り分けます' },
+  'deploy-cloudfront': { regions: [], comps: ['cloudfront'], label: 'CloudFront', desc: '⚡ CloudFrontを起動\nCDNで世界中へ高速コンテンツ配信します' },
+  'deploy-frontend':   { regions: [], comps: ['s3'], label: 'Frontend', desc: '🖥️ S3へフロントエンドをデプロイ\nWebサイトのファイルを配信します' },
 };
 
 const POLL_MS = 8000; // 8秒ごと（PAT有りなら短縮OK、無しなら60秒推奨）
@@ -124,6 +124,9 @@ function revealJob(jobName) {
   if (!mapping) return;
 
   addLog(`✓ ${jobName}`, 'success');
+  activateStep(jobName);
+
+  if (mapping.desc) showToast(mapping.desc);
 
   mapping.regions.forEach(id => show(id));
 
@@ -131,6 +134,35 @@ function revealJob(jobName) {
   mapping.comps.forEach((id, i) => {
     setTimeout(() => show(id), i * 150);
   });
+}
+
+// ============================================================
+// トースト通知（サービス説明）
+// ============================================================
+function showToast(message) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = message.replace(/\n/g, '<br>');
+  container.appendChild(toast);
+
+  // アニメーション後に削除
+  setTimeout(() => toast.classList.add('toast-hide'), 3200);
+  setTimeout(() => toast.remove(), 3700);
+}
+
+// ============================================================
+// ステップバーの該当ステップをアクティブに
+// ============================================================
+function activateStep(jobName) {
+  const step = document.querySelector(`.step[data-job="${jobName}"]`);
+  if (!step) return;
+  // 前のステップをdoneに
+  document.querySelectorAll('.step.active').forEach(s => {
+    s.classList.remove('active');
+    s.classList.add('done');
+  });
+  step.classList.add('active');
 }
 
 // ============================================================
@@ -164,7 +196,11 @@ function resetAll() {
     el.classList.remove('visible');
     el.classList.add('hidden');
   });
+  document.querySelectorAll('.step').forEach(el => {
+    el.classList.remove('active', 'done');
+  });
   document.getElementById('log').innerHTML = '';
+  document.getElementById('toast-container').innerHTML = '';
   setBadge('Idle', '');
 }
 
