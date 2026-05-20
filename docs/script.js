@@ -126,7 +126,7 @@ function revealJob(jobName) {
   addLog(`✓ ${jobName}`, 'success');
   activateStep(jobName);
 
-  if (mapping.desc) showToast(mapping.desc);
+  if (mapping.desc) showToast(mapping.desc, jobName);
 
   mapping.regions.forEach(id => show(id));
 
@@ -137,27 +137,104 @@ function revealJob(jobName) {
 }
 
 // ============================================================
-// トースト通知（サービス説明） — スタック式
+// トースト通知 — アイコン近傍表示＋SVGコネクタ線
 // ============================================================
-function showToast(message) {
-  const container = document.getElementById('toast-container');
 
-  // 既存のトーストを「古い」スタイルに（薄く縮小）
-  container.querySelectorAll('.toast:not(.toast-old)').forEach(t => {
-    t.classList.add('toast-old');
+// アクティブなポップアップを jobName → {popup, line} で管理
+const activePopups = new Map();
+
+// SVGオーバーレイ（線描画用）を取得 or 生成
+function getLineSvg() {
+  let svg = document.getElementById('popup-lines');
+  if (!svg) {
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'popup-lines';
+    svg.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9998;overflow:visible;';
+    document.body.appendChild(svg);
+  }
+  return svg;
+}
+
+function showToast(message, jobName) {
+  const stepEl = document.querySelector(`.step[data-job="${jobName}"]`);
+  if (!stepEl) return;
+
+  // 既存ポップは薄くする
+  activePopups.forEach((val, key) => {
+    if (key !== jobName) {
+      val.popup.classList.add('toast-old');
+      val.line && val.line.classList.add('line-old');
+    }
   });
 
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.innerHTML = message.replace(/\n/g, '<br>');
-  container.appendChild(toast);
+  // 既存の同jobポップを削除
+  if (activePopups.has(jobName)) {
+    activePopups.get(jobName).popup.remove();
+    activePopups.get(jobName).line && activePopups.get(jobName).line.remove();
+    activePopups.delete(jobName);
+  }
 
-  // 最大3枚まで。古いものから削除
-  const toasts = container.querySelectorAll('.toast');
-  if (toasts.length > 3) {
-    const oldest = toasts[0];
-    oldest.classList.add('toast-hide');
-    setTimeout(() => oldest.remove(), 500);
+  // ポップアップ要素を生成
+  const popup = document.createElement('div');
+  popup.className = 'toast';
+  popup.dataset.job = jobName;
+  popup.innerHTML = message.replace(/\n/g, '<br>');
+  document.body.appendChild(popup);
+
+  // アイコン位置を取得してポップアップを配置
+  function positionPopup() {
+    const sr   = stepEl.getBoundingClientRect();
+    const pw   = 220;
+    const gap  = 14; // アイコン下端からの距離
+
+    // ポップアップ左端：アイコン中央に合わせ、画面端クリップ
+    let left = sr.left + sr.width / 2 - pw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    const top = sr.bottom + gap;
+
+    popup.style.cssText = `
+      position: fixed;
+      left: ${left}px;
+      top: ${top}px;
+      width: ${pw}px;
+      z-index: 9999;
+    `;
+
+    // SVGコネクタ線を描画
+    const svg  = getLineSvg();
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    line.dataset.job = jobName;
+
+    const x1 = sr.left + sr.width / 2;
+    const y1 = sr.bottom + 2;
+    const x2 = left + pw / 2;
+    const y2 = top - 2;
+    // ベジェ曲線でなめらかに繋ぐ
+    const cy  = (y1 + y2) / 2;
+    line.setAttribute('d', `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`);
+    line.setAttribute('stroke', '#f90');
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke-dasharray', '5,3');
+    line.style.transition = 'opacity 0.45s ease';
+    svg.appendChild(line);
+
+    activePopups.set(jobName, { popup, line });
+  }
+
+  // DOMレイアウト確定後に配置
+  requestAnimationFrame(() => {
+    requestAnimationFrame(positionPopup);
+  });
+
+  // 最大4枚まで（古いものから削除）
+  if (activePopups.size > 4) {
+    const firstKey = activePopups.keys().next().value;
+    const old = activePopups.get(firstKey);
+    old.popup.classList.add('toast-hide');
+    old.line  && old.line.remove();
+    setTimeout(() => old.popup.remove(), 500);
+    activePopups.delete(firstKey);
   }
 }
 
@@ -221,6 +298,14 @@ function resetAll() {
   });
   document.getElementById('log').innerHTML = '';
   document.getElementById('toast-container').innerHTML = '';
+  // ポップアップとSVG線をすべて削除
+  activePopups.forEach(val => {
+    val.popup && val.popup.remove();
+    val.line  && val.line.remove();
+  });
+  activePopups.clear();
+  const svg = document.getElementById('popup-lines');
+  if (svg) svg.innerHTML = '';
   setBadge('Idle', '');
 }
 
