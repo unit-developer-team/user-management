@@ -104,17 +104,30 @@ async function fetchJobs(owner, repo, runId, pat) {
 function runDemo() {
   resetAll();
   setBadge('Demo中…', 'running');
-  const delay = 1200;
 
-  Object.keys(JOB_MAP).forEach((key, i) => {
+  const delay = 10000; // ← 10秒間隔
+
+  const jobKeys = Object.keys(JOB_MAP);
+
+  jobKeys.forEach((key, i) => {
     setTimeout(() => {
+
+      // ★ 前のポップを全部消す（重要）
+      activePopups.forEach(val => {
+        val.popup && val.popup.remove();
+        val.line  && val.line.remove();
+      });
+      activePopups.clear();
+
       revealJob(key);
-      if (i === Object.keys(JOB_MAP).length - 1) {
+
+      if (i === jobKeys.length - 1) {
         setBadge('Complete ✓', 'done');
       }
-    }, delay * (i + 1));
+    }, delay * i);
   });
 }
+
 
 // ============================================================
 // ジョブ表示
@@ -231,14 +244,7 @@ function showToast(message, jobName) {
 
   requestAnimationFrame(() => requestAnimationFrame(positionPopup));
 
-  if (activePopups.size > 4) {
-    const firstKey = activePopups.keys().next().value;
-    const old = activePopups.get(firstKey);
-    old.popup.classList.add('toast-hide');
-    old.line && old.line.remove();
-    setTimeout(() => old.popup.remove(), 500);
-    activePopups.delete(firstKey);
-  }
+ 
 }
 
 // ============================================================
