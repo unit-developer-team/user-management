@@ -197,7 +197,7 @@ function showToast(message, jobName) {
     const diagram = document.getElementById('diagram').getBoundingClientRect();
 
     const pw = 220;
-    const gap = 12;
+    const gap = 20;
 
     let left, top;
 
