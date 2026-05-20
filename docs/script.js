@@ -11,7 +11,7 @@ const JOB_MAP = {
   'deploy-lambda':     { regions: [], comps: ['lambda'], popupTarget: 'lambda', label: 'Lambda', desc: '⚡ Lambdaを起動\n必要な処理を自動実行できるようにします' },
   'deploy-apigw':      { regions: [], comps: ['apigw'], popupTarget: 'apigw', label: 'API GW', desc: '🌐 API Gatewayを起動\nアプリへのアクセスを受け付けます' },
   'deploy-cloudfront': { regions: [], comps: ['cloudfront'], popupTarget: 'cloudfront', label: 'CloudFront', desc: '⚡ CloudFrontを起動\nWebサイトを快適に表示できるようにします' },
-  'deploy-frontend':   { regions: [], comps: ['s3'], popupTarget: 's3', label: 'Frontend', desc: '🖥️ S3へフロントエンドをデプロイ\nブラウザから利用できるようにします' },
+  'deploy-frontend':   { regions: [], comps: ['s3'], popupTarget: 's3', label: 'Frontend', desc: '🖥️ S3へフロントをデプロイ\nブラウザから利用できるようにします' },
 };
 
 const POLL_MS = 8000;
@@ -197,7 +197,7 @@ function showToast(message, jobName) {
     const diagram = document.getElementById('diagram').getBoundingClientRect();
 
     const pw = 220;
-    const gap = 28;
+    const gap = 36;
 
     let left, top;
 
