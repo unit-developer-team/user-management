@@ -3,7 +3,7 @@
    ============================================================ */
 #step-bar {
   margin: 10px auto 8px;
-  width: 960px;
+  width: 1100px;
 }
 
 .step-row {
@@ -19,13 +19,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 68px;
-  min-height: 54px;
-  padding: 5px 3px;
+  width: 76px;
+  min-height: 60px;
+  padding: 6px 4px;
   border-radius: 8px;
   border: 2px solid #ddd;
   background: #f8f8f8;
-  font-size: 16px;
+  font-size: 18px;
   color: #bbb;
   transition: all 0.4s ease;
   cursor: default;
@@ -34,7 +34,7 @@
 }
 
 .step span {
-  font-size: 9px;
+  font-size: 10px;
   color: #bbb;
   margin-top: 2px;
   transition: color 0.4s;
@@ -259,52 +259,52 @@ h1 {
 
 /* ダイアグラムを少し広げる */
 #diagram {
-  width: 960px;
-  height: 640px;
+  width: 1100px;
+  height: 720px;
 }
 
 /* VPC枠（サブネットを内包） */
-#vpc { top: 80px; left: 150px; width: 630px; height: 480px; }
+#vpc { top: 90px; left: 170px; width: 720px; height: 540px; }
 
-/* VPCE枠（VPCの外側、サブネット全体を囲む） */
+/* Public Subnet */
 #subnet-public {
-  top: 30px;
-  left: 30px;
-  width: 250px;
-  height: 420px;
+  top: 35px;
+  left: 35px;
+  width: 280px;
+  height: 470px;
   border-color: #5a8fc9;
 }
 
-/* Public Subnet */
+/* Private Subnet */
 #subnet-private {
-  top: 30px;
-  left: 330px;
-  width: 250px;
-  height: 420px;
+  top: 35px;
+  left: 375px;
+  width: 280px;
+  height: 470px;
   border-color: #60a060;
 }
 
 /* --- VPC内コンポーネント --- */
 
 /* Public Subnet 内: ALB */
-#alb { top: 100px; left: 85px; }
-#lambda   { top: 280px; left: 85px; }
+#alb { top: 110px; left: 100px; }
+#lambda   { top: 320px; left: 100px; }
 
 /* Private Subnet 内 */
-#ecs      { top: 100px; left: 90px; }
-#dynamodb { top: 265px; left: 850px; }
+#ecs      { top: 110px; left: 100px; }
+#dynamodb { top: 265px; left: 980px; }
 
 /* --- VPC外・左列 --- */
-#cloudfront { top:  80px; left: 20px; }
-#cognito    { top: 200px; left: 20px; }
-#apigw      { top: 320px; left: 20px; }
-#s3         { top: 440px; left: 20px; }
+#cloudfront { top:  90px; left: 22px; }
+#cognito    { top: 220px; left: 22px; }
+#apigw      { top: 360px; left: 22px; }
+#s3         { top: 490px; left: 22px; }
 
 /* --- VPC外・右列 --- */
-#ecr { top: 150px; left: 850px; }
+#ecr { top: 150px; left: 980px; }
 
-/* --- VPCE アイコン（VPCE枠の右肩） --- */
-#vpce { top: 280px; left: 90px; }
+/* --- VPCE アイコン --- */
+#vpce { top: 320px; left: 100px; }
 
 /* ============================================================
    コントロールバー
@@ -316,7 +316,7 @@ h1 {
   justify-content: center;
   margin: 12px auto;
   flex-wrap: wrap;
-  width: 900px;
+  width: 1100px;
 }
 
 #controls input[type="text"] {
@@ -365,7 +365,7 @@ h1 {
    ログ
    ============================================================ */
 #log {
-  width: 900px;
+  width: 1100px;
   max-height: 110px;
   overflow-y: auto;
   margin: 0 auto;

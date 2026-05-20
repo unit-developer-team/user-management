@@ -165,7 +165,7 @@ function showToast(message) {
 // ステップバーの該当ステップをアクティブに
 // ============================================================
 // 並列ジョブ（dynamodb / ecr）は同時にactiveになれる
-const PARALLEL_JOBS = new Set(['deploy-dynamodb', 'deploy-ecr']);
+const PARALLEL_JOBS = new Set(['deploy-dynamodb', 'deploy-ecr', 'deploy-cloudfront']);
 
 function activateStep(jobName) {
   const step = document.querySelector(`.step[data-job="${jobName}"]`);
