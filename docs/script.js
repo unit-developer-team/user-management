@@ -105,7 +105,7 @@ function runDemo() {
   resetAll();
   setBadge('Demo中…', 'running');
 
-  const delay = 10000; // ← 10秒間隔
+  const delay = 6000; // ← 10秒間隔
 
   const jobKeys = Object.keys(JOB_MAP);
 
