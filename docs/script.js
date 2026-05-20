@@ -122,7 +122,23 @@ function runDemo() {
       revealJob(key);
 
       if (i === jobKeys.length - 1) {
-        setBadge('Complete ✓', 'done');
+        // 最後のポップアップを3秒後に消し、ステップをdoneにしてバッジ更新
+        setTimeout(() => {
+          activePopups.forEach(val => {
+            val.popup && val.popup.remove();
+            val.line  && val.line.remove();
+          });
+          activePopups.clear();
+          const svg = document.getElementById('popup-lines');
+          if (svg) svg.innerHTML = '';
+
+          document.querySelectorAll('.step.active').forEach(s => {
+            s.classList.remove('active');
+            s.classList.add('done');
+          });
+
+          setBadge('Complete ✓', 'done');
+        }, 3000);
       }
     }, delay * i);
   });
