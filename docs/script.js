@@ -137,31 +137,51 @@ function revealJob(jobName) {
 }
 
 // ============================================================
-// トースト通知（サービス説明）
+// トースト通知（サービス説明） — スタック式
 // ============================================================
 function showToast(message) {
   const container = document.getElementById('toast-container');
+
+  // 既存のトーストを「古い」スタイルに（薄く縮小）
+  container.querySelectorAll('.toast:not(.toast-old)').forEach(t => {
+    t.classList.add('toast-old');
+  });
+
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.innerHTML = message.replace(/\n/g, '<br>');
   container.appendChild(toast);
 
-  // アニメーション後に削除
-  setTimeout(() => toast.classList.add('toast-hide'), 3200);
-  setTimeout(() => toast.remove(), 3700);
+  // 最大3枚まで。古いものから削除
+  const toasts = container.querySelectorAll('.toast');
+  if (toasts.length > 3) {
+    const oldest = toasts[0];
+    oldest.classList.add('toast-hide');
+    setTimeout(() => oldest.remove(), 500);
+  }
 }
 
 // ============================================================
 // ステップバーの該当ステップをアクティブに
 // ============================================================
+// 並列ジョブ（dynamodb / ecr）は同時にactiveになれる
+const PARALLEL_JOBS = new Set(['deploy-dynamodb', 'deploy-ecr']);
+
 function activateStep(jobName) {
   const step = document.querySelector(`.step[data-job="${jobName}"]`);
   if (!step) return;
-  // 前のステップをdoneに
-  document.querySelectorAll('.step.active').forEach(s => {
-    s.classList.remove('active');
-    s.classList.add('done');
-  });
+
+  const isParallel = PARALLEL_JOBS.has(jobName);
+
+  if (!isParallel) {
+    // 非並列ジョブ：既存のactiveをすべてdoneにしてから自分をactive
+    document.querySelectorAll('.step.active').forEach(s => {
+      s.classList.remove('active');
+      s.classList.add('done');
+    });
+  }
+
+  step.classList.remove('active');
   step.classList.add('active');
 }
 

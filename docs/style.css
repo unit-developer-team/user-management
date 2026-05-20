@@ -2,12 +2,15 @@
    進捗ステップバー
    ============================================================ */
 #step-bar {
+  margin: 10px auto 8px;
+  width: 960px;
+}
+
+.step-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  margin: 10px auto 8px;
-  width: 960px;
   flex-wrap: nowrap;
 }
 
@@ -16,17 +19,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 72px;
+  width: 68px;
   min-height: 54px;
-  padding: 6px 4px;
+  padding: 5px 3px;
   border-radius: 8px;
   border: 2px solid #ddd;
   background: #f8f8f8;
-  font-size: 18px;
+  font-size: 16px;
   color: #bbb;
   transition: all 0.4s ease;
   cursor: default;
   line-height: 1.2;
+  flex-shrink: 0;
 }
 
 .step span {
@@ -67,13 +71,43 @@
   flex-shrink: 0;
 }
 
+.parallel-arrow {
+  font-size: 22px;
+  color: #aaa;
+}
+
+/* 並列ジョブ用グループ */
+.step-parallel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  align-items: center;
+}
+
+.parallel-row {
+  display: flex;
+  align-items: center;
+}
+
+.parallel-label {
+  font-size: 9px;
+  color: #aaa;
+  text-align: center;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
 @keyframes pulse-step {
   from { box-shadow: 0 0 6px rgba(255,165,0,0.3); }
   to   { box-shadow: 0 0 14px rgba(255,165,0,0.7); }
 }
 
 /* ============================================================
-   トースト通知
+   トースト通知 — スタック式（次が来るまで残す）
    ============================================================ */
 #toast-container {
   position: fixed;
@@ -98,11 +132,17 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   animation: toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
   opacity: 1;
-  transition: opacity 0.45s ease;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.toast.toast-old {
+  opacity: 0.35;
+  transform: scale(0.95);
 }
 
 .toast.toast-hide {
   opacity: 0;
+  transform: translateX(20px);
 }
 
 @keyframes toast-in {
