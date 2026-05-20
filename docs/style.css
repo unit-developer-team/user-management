@@ -295,10 +295,10 @@ h1 {
 #dynamodb { top: 265px; left: 980px; }
 
 /* --- VPC外・左列 --- */
-#cloudfront { top:  90px; left: 22px; }
-#cognito    { top: 220px; left: 22px; }
-#apigw      { top: 360px; left: 22px; }
-#s3         { top: 490px; left: 22px; }
+#s3         { top:  90px; left: 22px; }
+#cloudfront { top: 220px; left: 22px; }
+#cognito    { top: 360px; left: 22px; }
+#apigw      { top: 490px; left: 22px; }
 
 /* --- VPC外・右列 --- */
 #ecr { top: 150px; left: 980px; }
