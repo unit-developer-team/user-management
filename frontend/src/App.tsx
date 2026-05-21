@@ -30,110 +30,159 @@ function Clock() {
   );
 }
 
-const SIDEBAR_W = 220;
+const headerStyle: React.CSSProperties = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  zIndex: 100,
+  height: 52,
+  display: "grid",
+  gridTemplateColumns: "1fr auto 1fr",
+  alignItems: "center",
+  padding: "0 32px",
+  background: "#fff",
+  borderBottom: "0.5px solid #0a0a0a",
+};
 
-const sidebarNavItems = [
-  { label: "Users", icon: "👥", active: true },
-  { label: "Settings", icon: "⚙️", active: false },
-];
+const logoStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.2em",
+  textTransform: "uppercase",
+  color: "#0a0a0a",
+};
+
+const navPillStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 0,
+  border: "0.5px solid #0a0a0a",
+  borderRadius: 999,
+  overflow: "hidden",
+};
+
+const navItemStyle: React.CSSProperties = {
+  padding: "6px 20px",
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: "0.15em",
+  textTransform: "uppercase",
+  color: "#0a0a0a",
+  background: "transparent",
+  border: "none",
+  cursor: "default",
+  borderRight: "0.5px solid #0a0a0a",
+};
+
+const navItemActiveStyle: React.CSSProperties = {
+  ...navItemStyle,
+  background: "#0a0a0a",
+  color: "#fff",
+  borderRight: "none",
+};
+
+const headerRightStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 24,
+};
+
+const clockStyle: React.CSSProperties = {
+  fontSize: 10,
+  letterSpacing: "0.1em",
+  color: "#555",
+  fontVariantNumeric: "tabular-nums",
+};
+
+const footerStyle: React.CSSProperties = {
+  position: "fixed",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: 100,
+  height: 32,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "0 32px",
+  background: "#0a0a0a",
+  color: "#fff",
+};
+
+const footerTextStyle: React.CSSProperties = {
+  fontSize: 9,
+  letterSpacing: "0.2em",
+  textTransform: "uppercase",
+  color: "rgba(255,255,255,0.5)",
+};
+
+const footerStatusStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 16,
+};
+
+const statusDotStyle: React.CSSProperties = {
+  width: 5,
+  height: 5,
+  borderRadius: "50%",
+  background: "#fff",
+  display: "inline-block",
+  marginRight: 6,
+};
 
 function AppShell({ signOut, username, children }: { signOut?: () => void; username?: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f1f5f9", fontFamily: "'Inter', 'Helvetica Neue', sans-serif" }}>
-      {/* Sidebar */}
-      <aside style={{
-        width: SIDEBAR_W,
-        flexShrink: 0,
-        background: "linear-gradient(180deg, #1e1b4b 0%, #312e81 100%)",
-        display: "flex",
-        flexDirection: "column",
-        padding: "0",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        bottom: 0,
-        zIndex: 100,
-      }}>
-        {/* Logo */}
-        <div style={{ padding: "28px 24px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10,
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(99,102,241,0.5)",
-              fontSize: 16,
-            }}>👤</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>UserHub</div>
-              <div style={{ fontSize: 10, color: "rgba(165,180,252,0.6)", letterSpacing: "0.04em" }}>Management</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav style={{ padding: "16px 12px", flex: 1 }}>
-          {sidebarNavItems.map((item) => (
-            <div key={item.label} style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 12px", borderRadius: 8, marginBottom: 4,
-              background: item.active ? "rgba(99,102,241,0.25)" : "transparent",
-              borderLeft: item.active ? "3px solid #818cf8" : "3px solid transparent",
-              cursor: "default",
-            }}>
-              <span style={{ fontSize: 15 }}>{item.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: item.active ? 600 : 400, color: item.active ? "#e0e7ff" : "rgba(255,255,255,0.45)", letterSpacing: "0.01em" }}>{item.label}</span>
-            </div>
-          ))}
+    <>
+      <header style={headerStyle}>
+        <span style={logoStyle}>UM / System</span>
+        <nav style={navPillStyle}>
+          <span style={navItemActiveStyle}>Users</span>
+          <span style={{ ...navItemStyle, borderRight: "none" }}>Settings</span>
         </nav>
-
-        {/* User info */}
-        <div style={{ padding: "16px 16px 24px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: "50%",
-              background: "linear-gradient(135deg, #34d399, #059669)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, fontWeight: 700, color: "#fff",
-            }}>{username ? username[0].toUpperCase() : "U"}</div>
-            <div style={{ overflow: "hidden" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#e0e7ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{username ?? "User"}</div>
-              <div style={{ fontSize: 10, color: "rgba(165,180,252,0.5)" }}>Administrator</div>
-            </div>
-          </div>
+        <div style={headerRightStyle}>
+          <span style={clockStyle}><Clock /></span>
+          {username && (
+            <span style={{ fontSize: 10, letterSpacing: "0.1em", color: "#555" }}>{username}</span>
+          )}
           {signOut && (
-            <button onClick={signOut} style={{
-              width: "100%", padding: "8px", borderRadius: 8,
-              background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
-              color: "#fca5a5", fontSize: 12, fontWeight: 500, cursor: "pointer",
-              letterSpacing: "0.02em",
-            }}>Sign Out</button>
+            <button
+              onClick={signOut}
+              style={{
+                fontSize: 9,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                background: "transparent",
+                border: "0.5px solid #0a0a0a",
+                padding: "4px 12px",
+                cursor: "pointer",
+                color: "#0a0a0a",
+              }}
+            >
+              Sign Out
+            </button>
           )}
         </div>
-      </aside>
+      </header>
 
-      {/* Main */}
-      <div style={{ marginLeft: SIDEBAR_W, flex: 1, display: "flex", flexDirection: "column" }}>
-        {/* Top bar */}
-        <header style={{
-          height: 60, background: "#fff",
-          borderBottom: "1px solid #e2e8f0",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 32px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#1e1b4b", letterSpacing: "-0.02em" }}>User Management</div>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>Manage your team members</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ fontSize: 12, color: "#64748b", fontVariantNumeric: "tabular-nums" }}><Clock /></div>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px #10b981" }} />
-          </div>
-        </header>
-        <main style={{ flex: 1, padding: "32px" }}>{children}</main>
-      </div>
-    </div>
+      <main style={{ paddingTop: 52, paddingBottom: 32, minHeight: "100vh" }}>
+        {children}
+      </main>
+
+      <footer style={footerStyle}>
+        <div style={footerStatusStyle}>
+          <span style={footerTextStyle}>
+            <span style={statusDotStyle} />
+            System Online
+          </span>
+          <span style={footerTextStyle}>Tokyo, JP</span>
+        </div>
+        <span style={footerTextStyle}>User Management System — v1.0</span>
+        <span style={footerTextStyle}>© 2025</span>
+      </footer>
+    </>
   );
 }
 
