@@ -98,40 +98,6 @@ function UsersPage() {
         <StatCard label="This Month" value={users.filter(u => u.createdAt?.startsWith(new Date().toISOString().slice(0,7))).length} color="#f59e0b" />
       </div>
 
-<<<<<<< Updated upstream
-        {/* ページタイトル */}
-        <div style={{ position: "relative", borderBottom: "0.5px solid #0a0a0a", paddingBottom: 24, marginBottom: 64, overflow: "hidden" }}>
-          {/* 背景グラフィック */}
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              bottom: -20,
-              left: -10,
-              fontSize: "clamp(80px, 18vw, 220px)",
-              fontWeight: 900,
-              letterSpacing: "-0.05em",
-              color: "transparent",
-              WebkitTextStroke: "0.5px #e0e0e0",
-              userSelect: "none",
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-              lineHeight: 1,
-            }}
-          >
-            USERS
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", position: "relative" }}>
-            <h1 style={{ fontSize: "clamp(36px, 6vw, 72px)", fontWeight: 300, letterSpacing: "-0.03em", lineHeight: 1, color: "#0a0a0a" }}>
-              User<br />Management
-            </h1>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "#999", marginBottom: 4 }}>Total</div>
-              <div style={{ fontSize: 48, fontWeight: 700, lineHeight: 1, color: "#0a0a0a" }}>{String(users.length).padStart(2, "0")}</div>
-            </div>
-          </div>
-        </div>
-=======
       {/* Register form card */}
       <div style={{
         background: "#fff", borderRadius: 16, padding: "28px 32px", marginBottom: 28,
@@ -139,7 +105,6 @@ function UsersPage() {
       }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#1e1b4b", marginBottom: 4 }}>新規ユーザー登録</div>
         <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 20 }}>Add a new member to your team</div>
->>>>>>> Stashed changes
 
         {error && (
           <div style={{
